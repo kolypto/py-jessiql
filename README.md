@@ -1,9 +1,10 @@
-[![Test](https://github.com/kolypto/py-myproject/workflows/Test/badge.svg)](/kolypto/py-myproject/actions)
-[![Pythons](https://img.shields.io/badge/python-3.7%E2%80%933.9-blue.svg)](noxfile.py)
+[![Test](https://github.com/kolypto/py-jessiql/workflows/Test/badge.svg)](/kolypto/py-jessiql/actions)
+[![Pythons](https://img.shields.io/badge/python-3.8%E2%80%933.9-blue.svg)](noxfile.py)
 
-Project template. Here's how it works:
+Jessiql: JSON Query Language for SqlAlchemy Core
+================================================
 
-    $ git remote add template git@github.com:kolypto/py-_project-template.git
-    $ git fetch --all
-    $ git merge template/master --allow-unrelated-histories
+Jessiql (pronounced: Jessi-cal) is a successor to [MongoSQL](https://github.com/kolypto/py-mongosql):
+a query engine that lets you query an SQL database using JSON syntax like this:
+
 

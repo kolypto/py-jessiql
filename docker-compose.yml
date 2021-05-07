@@ -1,7 +1,7 @@
 version: '3'
 
 services:
-  py-myproject-postgres-test:
+  py-jessiql-postgres-test:
     image: postgres:latest
     restart: always
     ports:
@@ -9,9 +9,9 @@ services:
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: test_myproject
+      POSTGRES_DB: test_jessiql
       
-  py-myproject-mysql-test:
+  py-jessiql-mysql-test:
     image: mysql:latest
     restart: always
     ports:
@@ -20,4 +20,4 @@ services:
       MYSQL_USER: mysql
       MYSQL_PASSWORD: mysql
       MYSQL_ROOT_PASSWORD: mysql
-      MYSQL_DATABASE: test_myproject
+      MYSQL_DATABASE: test_jessiql

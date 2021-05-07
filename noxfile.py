@@ -1,16 +1,16 @@
 import nox.sessions
 
 
-PYTHON_VERSIONS = ['3.7', '3.8', '3.9']
+PYTHON_VERSIONS = ['3.8', '3.9']
 SQLALCHEMY_VERSIONS = [
-    *(f'1.3.{x}' for x in range(0, 1 + 20)),
+    *(f'1.4.{x}' for x in range(13, 1 + 13)),
 ]
 
 
 nox.options.reuse_existing_virtualenvs = True
 nox.options.sessions = [
     'tests',
-    # 'tests_sqlalchemy',
+    'tests_sqlalchemy',
 ]
 
 
@@ -25,7 +25,7 @@ def tests(session: nox.sessions.Session, sqlalchemy=None):
         session.install(f'sqlalchemy=={sqlalchemy}')
 
     # Test
-    session.run('pytest', 'tests/', '--cov=myproject')
+    session.run('pytest', 'tests/', '--cov=jessiql')
 
 
 @nox.session(python=PYTHON_VERSIONS[-1])
