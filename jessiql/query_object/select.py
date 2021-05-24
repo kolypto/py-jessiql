@@ -14,6 +14,7 @@ import sqlalchemy.orm
 from jessiql import exc
 from jessiql.typing import SAAttribute
 from jessiql.sainfo.names import field_name
+from jessiql.util.dataclasses import dataclass_defaults, NOTSET
 
 
 @dataclass
@@ -72,12 +73,10 @@ class Select:
         return cls(fields=fields, relations=relations)
 
 
+@dataclass_defaults(property=NOTSET, is_array=NOTSET, is_json=NOTSET)
 @dataclass
 class SelectedField:
     name: str
-
-    def __init__(self, name: str):
-        self.name = name
 
     # Populated when resolved by resolve_selected_field()
     property: sa.orm.ColumnProperty
@@ -87,14 +86,11 @@ class SelectedField:
     __slots__ = 'name', 'property', 'is_array', 'is_json'
 
 
+@dataclass_defaults(property=NOTSET, uselist=NOTSET)
 @dataclass
 class SelectedRelation:
     name: str
     query: QueryObject
-
-    def __init__(self, name: str, query: QueryObject):
-        self.name = name
-        self.query = query
 
     # Populated when resolved by resolve_selected_relation()
     property: sa.orm.ColumnProperty

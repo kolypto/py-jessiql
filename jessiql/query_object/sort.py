@@ -15,6 +15,7 @@ import sqlalchemy.orm
 from jessiql import exc
 from jessiql.sainfo.names import field_name
 from jessiql.typing import SAAttribute
+from jessiql.util.dataclasses import dataclass_defaults, NOTSET
 
 
 @dataclass
@@ -41,7 +42,7 @@ class Sort:
     @classmethod
     def parse_input_field(cls, field: Union[str]) -> SortingField:
         # Look at the ending character
-        end_c = field[:-1]
+        end_c = field[-1:]
 
         # If there's a sorting character, use it
         if end_c == '-' or end_c == '+':
@@ -56,6 +57,7 @@ class Sort:
         return SortingField(name=name, direction=direction)
 
 
+@dataclass_defaults(property=NOTSET)
 @dataclass
 class SortingField:
     name: str

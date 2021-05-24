@@ -9,10 +9,11 @@ import sqlalchemy.orm.strategies
 
 from jessiql.query_object import QueryObject
 from jessiql.query_object import SelectedRelation
-from jessiql.sainfo.columns import resolve_selected_field
+from jessiql.sainfo.columns import resolve_selected_field, resolve_sorting_field_with_direction
 from jessiql.sainfo.relations import resolve_selected_relation
 from jessiql.testing.recreate_tables import created_tables
 from jessiql.sautil.adapt import SimpleColumnsAdapter, LeftRelationshipColumnsAdapter
+from jessiql.typing import SAModelOrAlias, SARowDict
 
 
 def test_joins_many_levels(connection: sa.engine.Connection):
@@ -87,17 +88,19 @@ def test_joins_many_levels(connection: sa.engine.Connection):
                     }
                 ),
             },
+            sort=['id-'],
         ))
 
-        def simple_query(connection: sa.engine.Connection, target_Model: type, query: QueryObject) -> abc.Iterator[dict]:
+        def simple_query(connection: sa.engine.Connection, target_Model: SAModelOrAlias, query: QueryObject) -> abc.Iterator[SARowDict]:
             stmt = sa.select([]).select_from(target_Model)
             stmt = add_selected_fields_to_statement(stmt, target_Model, query)
+            stmt = add_sorting_fields_to_statement(stmt, target_Model, query)
 
             # Get the result, convert list[RowMapping] into list[dict]
             res: sa.engine.CursorResult = connection.execute(stmt)
             yield from (dict(row) for row in res.mappings())  # TODO: use fetchmany() or partitions()
 
-        def joined_query(connection: sa.engine.Connection, source_Model: type, target_Model: type, selected_relation: SelectedRelation, source_states: list[dict]):
+        def joined_query(connection: sa.engine.Connection, source_Model: SAModelOrAlias, target_Model: SAModelOrAlias, selected_relation: SelectedRelation, source_states: list[SARowDict]):
             query = selected_relation.query
 
             relation_attribute = resolve_selected_relation(source_Model, selected_relation, where='select')
@@ -105,6 +108,7 @@ def test_joins_many_levels(connection: sa.engine.Connection):
 
             stmt = sa.select([]).select_from(target_Model)
             stmt = add_selected_fields_to_statement(stmt, target_Model, query)
+            stmt = add_sorting_fields_to_statement(stmt, target_Model, query)
 
             # Joined Loader
             loader = JSelectInLoader(source_Model, relation_property, target_Model)
@@ -233,6 +237,17 @@ def add_selected_fields_to_statement(stmt: sa.sql.Select, target_Model: type, qu
     return stmt
 
 
+def add_sorting_fields_to_statement(stmt: sa.sql.Select, target_Model: type, query: QueryObject) -> sa.sql.Select:
+    # Sort fields
+    stmt = stmt.order_by(*(
+        resolve_sorting_field_with_direction(target_Model, field, where='sort')
+        for field in query.sort.fields
+    ))
+
+    # Done
+    return stmt
+
+
 # Inspired by SelectInLoader._load_for_path() , SqlAlchemy v1.4.15
 # With some differences;
 # * We ignore the `load_with_join` branch because we can ensure all FKs are loaded
@@ -241,7 +256,7 @@ def add_selected_fields_to_statement(stmt: sa.sql.Select, target_Model: type, qu
 # * Some customizations are marked with [CUSTOMIZED]
 # * Some additions are marked with [ADDED]
 class JSelectInLoader:
-    def __init__(self, source_model: type, relation_property: sa.orm.RelationshipProperty, target_model: type):
+    def __init__(self, source_model: SAModelOrAlias, relation_property: sa.orm.RelationshipProperty, target_model: SAModelOrAlias):
         self.source_model = source_model
         self.relation_property = relation_property
         self.target_model = target_model
@@ -254,7 +269,7 @@ class JSelectInLoader:
         self.query_info = loader._query_info
 
     # Inspired by SelectInLoader._load_for_path(), part 1, SqlAlchemy v1.4.15
-    def prepare_states(self, states: list[dict]):
+    def prepare_states(self, states: list[SARowDict]):
         query_info = self.query_info
 
         # This value is set to `True` when either `relationship(omit_join=False)` was set, or when the left mapper entities
@@ -306,7 +321,7 @@ class JSelectInLoader:
             ]
 
     # Inspired by SelectInLoader._load_for_path(), part 2, SqlAlchemy v1.4.15
-    def prepare_query(self, q: sa.sql.Select):
+    def prepare_query(self, q: sa.sql.Select) -> sa.sql.Select:
         # [ADDED] Adapt pk_cols
         adapter = SimpleColumnsAdapter(self.target_model)
         pk_cols = adapter.replace_many(self.query_info.pk_cols)
@@ -321,7 +336,7 @@ class JSelectInLoader:
 
         return q
 
-    def fetch_results_and_populate_states(self, connection: sa.engine.Connection, q: sa.sql.Select) -> abc.Iterator[dict]:
+    def fetch_results_and_populate_states(self, connection: sa.engine.Connection, q: sa.sql.Select) -> abc.Iterator[SARowDict]:
         if self.query_info.load_only_child:
             yield from self._load_via_child(connection, self.our_states, self.none_states, q)
         else:
@@ -330,7 +345,7 @@ class JSelectInLoader:
     CHUNKSIZE = sa.orm.strategies.SelectInLoader._chunksize
 
     # Inspired by SelectInLoader._load_via_parent() , SqlAlchemy v1.4.15
-    def _load_via_parent(self, connection: sa.engine.Connection, our_states: list[dict], q: sa.sql.Select) -> abc.Iterator[dict]:
+    def _load_via_parent(self, connection: sa.engine.Connection, our_states: list[SARowDict], q: sa.sql.Select) -> abc.Iterator[SARowDict]:
         uselist: bool = self.relation_property.uselist
         _empty_result = () if uselist else None
 
@@ -367,7 +382,7 @@ class JSelectInLoader:
                 yield from collection
 
     # Inspired by SelectInLoader._load_via_child() , SqlAlchemy v1.4.15
-    def _load_via_child(self, connection: sa.engine.Connection, our_states: dict[tuple, list], none_states: list[dict], q: sa.sql.Select) -> abc.Iterator[dict]:
+    def _load_via_child(self, connection: sa.engine.Connection, our_states: dict[tuple, list], none_states: list[dict], q: sa.sql.Select) -> abc.Iterator[SARowDict]:
         uselist: bool = self.relation_property.uselist
 
         # this sort is really for the benefit of the unit tests
@@ -397,7 +412,7 @@ class JSelectInLoader:
             yield from data.values()
 
 
-def select_local_columns_for_relations(Model: type, q: QueryObject, *, where: str):
+def select_local_columns_for_relations(Model: SAModelOrAlias, q: QueryObject, *, where: str):
     for relation in q.select.relations.values():
         relation_attribute = resolve_selected_relation(Model, relation, where=where)
         relation_property: sa.orm.RelationshipProperty = relation_attribute.property
@@ -406,7 +421,7 @@ def select_local_columns_for_relations(Model: type, q: QueryObject, *, where: st
         yield from adapter.replace_many(relation_property.local_columns)
 
 
-def get_primary_key_tuple(mapper: sa.orm.Mapper, row: dict) -> tuple:
+def get_primary_key_tuple(mapper: sa.orm.Mapper, row: SARowDict) -> tuple:
     """ Get the primary key tuple from a row dict
 
     Args:
@@ -416,7 +431,7 @@ def get_primary_key_tuple(mapper: sa.orm.Mapper, row: dict) -> tuple:
     return tuple(row[col.key] for col in mapper.primary_key)
 
 
-def get_foreign_key_tuple(row: dict, query_info: sa.orm.strategies.SelectInLoader.query_info) -> tuple:
+def get_foreign_key_tuple(row: SARowDict, query_info: sa.orm.strategies.SelectInLoader.query_info) -> tuple:
     """ Get the foreign key tuple from a row dict
 
     Args:

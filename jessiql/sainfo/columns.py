@@ -40,6 +40,15 @@ def resolve_sorting_field(Model: SAModelOrAlias, field: query_object.SortingFiel
     return attribute
 
 
+def resolve_sorting_field_with_direction(Model: SAModelOrAlias, field: query_object.SortingField, *, where: str) -> InstrumentedAttribute:
+    attribute = resolve_sorting_field(Model, field, where=where)
+
+    if field.direction == query_object.SortingDirection.DESC:
+        return attribute.desc()
+    else:
+        return attribute.asc()
+
+
 def resolve_column_by_name(Model: SAModelOrAlias, field_name: str, *, where: str) -> InstrumentedAttribute:
     # As simple as it looks, this code invokes __getattr__() on sa.orm.AliasedClass which adapts the SQL expression
     # to make sure it uses the proper aliased name in queries
