@@ -10,6 +10,7 @@ import sqlalchemy.orm.strategies
 from jessiql.query_object import QueryObject
 from jessiql.query_object import SelectedRelation
 from jessiql.query_object import resolve_selected_field, resolve_sorting_field_with_direction, resolve_selected_relation
+from jessiql import operations
 from jessiql.testing.recreate_tables import created_tables
 from jessiql.sautil.adapt import SimpleColumnsAdapter, LeftRelationshipColumnsAdapter
 from jessiql.typing import SAModelOrAlias, SARowDict
@@ -93,8 +94,11 @@ def test_joins_many_levels(connection: sa.engine.Connection):
 
         def simple_query(connection: sa.engine.Connection, target_Model: SAModelOrAlias, query: QueryObject) -> abc.Iterator[SARowDict]:
             stmt = sa.select([]).select_from(target_Model)
-            stmt = add_selected_fields_to_statement(stmt, target_Model, query)
-            stmt = add_sorting_fields_to_statement(stmt, target_Model, query)
+
+            select_op = operations.SelectOperation(query, target_Model)
+            stmt = select_op.apply_to_statement(stmt)
+            sort_op = operations.SortOperation(query, target_Model)
+            stmt = sort_op.apply_to_statement(stmt)
 
             # Get the result, convert list[RowMapping] into list[dict]
             res: sa.engine.CursorResult = connection.execute(stmt)
@@ -103,11 +107,12 @@ def test_joins_many_levels(connection: sa.engine.Connection):
         def joined_query(connection: sa.engine.Connection, source_Model: SAModelOrAlias, target_Model: SAModelOrAlias, selected_relation: SelectedRelation, source_states: list[SARowDict]):
             query = selected_relation.query
 
-            relation_attribute = resolve_selected_relation(source_Model, selected_relation, where='select')
-
             stmt = sa.select([]).select_from(target_Model)
-            stmt = add_selected_fields_to_statement(stmt, target_Model, query)
-            stmt = add_sorting_fields_to_statement(stmt, target_Model, query)
+
+            select_op = operations.SelectOperation(query, target_Model)
+            stmt = select_op.apply_to_statement(stmt)
+            sort_op = operations.SortOperation(query, target_Model)
+            stmt = sort_op.apply_to_statement(stmt)
 
             # Joined Loader
             loader = JSelectInLoader(source_Model, selected_relation.property, target_Model)
@@ -217,34 +222,6 @@ class Comment(ManyFieldsMixin, Base):
 
     user_id = sa.Column(sa.ForeignKey(User.id))
     author = sa.orm.relationship(User, back_populates='comments')
-
-
-def add_selected_fields_to_statement(stmt: sa.sql.Select, target_Model: type, query: QueryObject) -> sa.sql.Select:
-    # Select columns from query.select
-    stmt = stmt.add_columns(*(
-        resolve_selected_field(target_Model, field, where='select')
-        for field in query.select.fields.values()
-    ))
-
-    # Add columns that relationships want using query.select
-    # Note: duplicate columns will be removed automatically by the select() method
-    stmt = stmt.add_columns(
-        *select_local_columns_for_relations(target_Model, query, where='select')
-    )
-
-    # Done
-    return stmt
-
-
-def add_sorting_fields_to_statement(stmt: sa.sql.Select, target_Model: type, query: QueryObject) -> sa.sql.Select:
-    # Sort fields
-    stmt = stmt.order_by(*(
-        resolve_sorting_field_with_direction(target_Model, field, where='sort')
-        for field in query.sort.fields
-    ))
-
-    # Done
-    return stmt
 
 
 # Inspired by SelectInLoader._load_for_path() , SqlAlchemy v1.4.15
@@ -410,14 +387,6 @@ class JSelectInLoader:
             # [ADDED] Return loaded objects
             yield from data.values()
 
-
-def select_local_columns_for_relations(Model: SAModelOrAlias, q: QueryObject, *, where: str):
-    for relation in q.select.relations.values():
-        relation_attribute = resolve_selected_relation(Model, relation, where=where)
-        relation_property: sa.orm.RelationshipProperty = relation_attribute.property
-
-        adapter = LeftRelationshipColumnsAdapter(Model, relation_property)
-        yield from adapter.replace_many(relation_property.local_columns)
 
 
 def get_primary_key_tuple(mapper: sa.orm.Mapper, row: SARowDict) -> tuple:
