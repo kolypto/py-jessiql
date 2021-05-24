@@ -8,6 +8,7 @@ import sqlalchemy.orm
 import sqlalchemy.orm.strategies
 
 from jessiql.query_object import QueryObject
+from jessiql.query_object import SelectedRelation
 from jessiql.sainfo.columns import resolve_selected_field
 from jessiql.sainfo.relations import resolve_selected_relation
 from jessiql.testing.recreate_tables import created_tables
@@ -117,95 +118,39 @@ def test_joins_many_levels(connection: sa.engine.Connection):
 
 
 
+
+
+
         # === Query User.articles
-        source_Model = cls_User
-        target_Model = cls_Article = sa.orm.aliased(Article)
-
-        selected_relation = query.select.relations['articles']
-        query = selected_relation.query
-
-        stmt = sa.select([]).select_from(target_Model)
-
-        # Select columns from query.select
-        stmt = stmt.add_columns(*(
-            resolve_selected_field(target_Model, field, where='select')
-            for field in query.select.fields.values()
+        loaded_articles = list(joined_query(
+            connection,
+            source_Model=cls_User,
+            target_Model=sa.orm.aliased(Article),
+            selected_relation=(selected_relation := query.select.relations['articles']),
+            source_states=loaded_users,
         ))
-        # Add columns that relationships want using query.select
-        # Note: duplicate columns will be removed automatically by the select() method
-        stmt = stmt.add_columns(
-            *select_local_columns_for_relations(target_Model, query, where='select')
-        )
-
-        relation_attribute = resolve_selected_relation(source_Model, selected_relation, where='select')
-        relation_property: sa.orm.RelationshipProperty = relation_attribute.property
-
-        loader = JSelectInLoader(source_Model, relation_property, target_Model)
-        loader.prepare_states(loaded_users)
-        stmt = loader.prepare_query(stmt)
-        loaded_articles = list(loader.populate_states(connection, stmt))
 
 
 
         # === Query Article.comments
-        source_Model = cls_Article
-        target_Model = cls_Comment = sa.orm.aliased(Comment)
-
-        selected_relation = selected_relation.query.select.relations['comments']
-        query = selected_relation.query
-
-        stmt = sa.select([]).select_from(target_Model)
-
-        # Select columns from query.select
-        stmt = stmt.add_columns(*(
-            resolve_selected_field(target_Model, field, where='select')
-            for field in query.select.fields.values()
+        loaded_comments = list(joined_query(
+            connection,
+            source_Model=Article,
+            target_Model=sa.orm.aliased(Comment),
+            selected_relation=(selected_relation := selected_relation.query.select.relations['comments']),
+            source_states=loaded_articles,
         ))
-        # Add columns that relationships want using query.select
-        # Note: duplicate columns will be removed automatically by the select() method
-        stmt = stmt.add_columns(
-            *select_local_columns_for_relations(target_Model, query, where='select')
-        )
-
-        relation_attribute = resolve_selected_relation(source_Model, selected_relation, where='select')
-        relation_property: sa.orm.RelationshipProperty = relation_attribute.property
-
-        loader = JSelectInLoader(source_Model, relation_property, target_Model)
-        loader.prepare_states(loaded_articles)
-        q = loader.prepare_query(stmt)
-        loaded_comments = list(loader.populate_states(connection, q))
-
 
 
 
         # === Query Comment.author
-        source_Model = cls_Comment
-        target_Model = cls_User = sa.orm.aliased(User)
-
-        selected_relation = selected_relation.query.select.relations['author']
-        query = selected_relation.query
-
-        stmt = sa.select([]).select_from(target_Model)
-
-        # Select columns from query.select
-        stmt = stmt.add_columns(*(
-            resolve_selected_field(target_Model, field, where='select')
-            for field in query.select.fields.values()
+        loaded_authors = list(joined_query(
+            connection,
+            source_Model=Comment,
+            target_Model=sa.orm.aliased(User),
+            selected_relation=(selected_relation := selected_relation.query.select.relations['author']),
+            source_states=loaded_comments,
         ))
-        # Add columns that relationships want using query.select
-        # Note: duplicate columns will be removed automatically by the select() method
-        stmt = stmt.add_columns(
-            *select_local_columns_for_relations(target_Model, query, where='select')
-        )
-
-        relation_attribute = resolve_selected_relation(source_Model, selected_relation, where='select')
-        relation_property: sa.orm.RelationshipProperty = relation_attribute.property
-
-        loader = JSelectInLoader(source_Model, relation_property, target_Model)
-        loader.prepare_states(loaded_comments)
-        q = loader.prepare_query(stmt)
-        loaded_authors = list(loader.populate_states(connection, q))
-
 
 
         __import__('pprint').pprint(loaded_users)
@@ -269,9 +214,32 @@ class Comment(ManyFieldsMixin, Base):
     author = sa.orm.relationship(User, back_populates='comments')
 
 
+def joined_query(connection: sa.engine.Connection, source_Model: type, target_Model: type, selected_relation: SelectedRelation, source_states: list[dict]):
+    query = selected_relation.query
 
+    relation_attribute = resolve_selected_relation(source_Model, selected_relation, where='select')
+    relation_property: sa.orm.RelationshipProperty = relation_attribute.property
 
+    stmt = sa.select([]).select_from(target_Model)
 
+    # Select columns from query.select
+    stmt = stmt.add_columns(*(
+        resolve_selected_field(target_Model, field, where='select')
+        for field in query.select.fields.values()
+    ))
+    # Add columns that relationships want using query.select
+    # Note: duplicate columns will be removed automatically by the select() method
+    stmt = stmt.add_columns(
+        *select_local_columns_for_relations(target_Model, query, where='select')
+    )
+
+    # Joined Loader
+    loader = JSelectInLoader(source_Model, relation_property, target_Model)
+    loader.prepare_states(source_states)
+    stmt = loader.prepare_query(stmt)
+
+    # Done
+    yield from loader.populate_states(connection, stmt)
 
 
 # Inspired by SelectInLoader._load_for_path() , SqlAlchemy v1.4.15
