@@ -84,7 +84,8 @@ def test_joins_many_levels(connection: sa.engine.Connection):
                                 )
                             }
                         ),
-                    }
+                    },
+                    sort=['id-'],
                 ),
             },
             sort=['id-'],
