@@ -16,37 +16,7 @@ from sqlalchemy.orm import (  # type: ignore[attr-defined]  # sqlalchemy stubs n
 
 from jessiql.sainfo.names import model_name
 from jessiql.typing import SAModelOrAlias, SAAttribute
-from jessiql import query_object
 from jessiql import exc
-
-
-def resolve_selected_field(Model: SAModelOrAlias, field: query_object.SelectedField, *, where: str) -> InstrumentedAttribute:
-    attribute = resolve_column_by_name(Model, field.name, where=where)
-
-    # Populate the missing fields
-    field.property = attribute.property
-    field.is_array = is_array(attribute)
-    field.is_json = is_json(attribute)
-
-    return attribute
-
-
-def resolve_sorting_field(Model: SAModelOrAlias, field: query_object.SortingField, *, where: str) -> InstrumentedAttribute:
-    attribute = resolve_column_by_name(Model, field.name, where=where)
-
-    # Populate the missing fields
-    field.property = attribute.property
-
-    return attribute
-
-
-def resolve_sorting_field_with_direction(Model: SAModelOrAlias, field: query_object.SortingField, *, where: str) -> InstrumentedAttribute:
-    attribute = resolve_sorting_field(Model, field, where=where)
-
-    if field.direction == query_object.SortingDirection.DESC:
-        return attribute.desc()
-    else:
-        return attribute.asc()
 
 
 def resolve_column_by_name(Model: SAModelOrAlias, field_name: str, *, where: str) -> InstrumentedAttribute:

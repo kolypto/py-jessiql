@@ -15,18 +15,7 @@ from sqlalchemy.orm.dynamic import DynaLoader
 
 from jessiql.sainfo.names import model_name
 from jessiql.typing import SAModelOrAlias, SAAttribute
-from jessiql import query_object
 from jessiql import exc
-
-
-def resolve_selected_relation(Model: SAModelOrAlias, field: query_object.SelectedRelation, *, where: str) -> InstrumentedAttribute:
-    attribute = resolve_relation_by_name(Model, field.name, where=where)
-
-    # Populate the missing fields
-    field.property = attribute.property
-    field.uselist = field.property.uselist
-
-    return attribute
 
 
 def resolve_relation_by_name(Model: SAModelOrAlias, field_name: str, *, where: str) -> InstrumentedAttribute:

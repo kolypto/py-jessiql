@@ -9,8 +9,7 @@ import sqlalchemy.orm.strategies
 
 from jessiql.query_object import QueryObject
 from jessiql.query_object import SelectedRelation
-from jessiql.sainfo.columns import resolve_selected_field, resolve_sorting_field_with_direction
-from jessiql.sainfo.relations import resolve_selected_relation
+from jessiql.query_object import resolve_selected_field, resolve_sorting_field_with_direction, resolve_selected_relation
 from jessiql.testing.recreate_tables import created_tables
 from jessiql.sautil.adapt import SimpleColumnsAdapter, LeftRelationshipColumnsAdapter
 from jessiql.typing import SAModelOrAlias, SARowDict
@@ -104,14 +103,13 @@ def test_joins_many_levels(connection: sa.engine.Connection):
             query = selected_relation.query
 
             relation_attribute = resolve_selected_relation(source_Model, selected_relation, where='select')
-            relation_property: sa.orm.RelationshipProperty = relation_attribute.property
 
             stmt = sa.select([]).select_from(target_Model)
             stmt = add_selected_fields_to_statement(stmt, target_Model, query)
             stmt = add_sorting_fields_to_statement(stmt, target_Model, query)
 
             # Joined Loader
-            loader = JSelectInLoader(source_Model, relation_property, target_Model)
+            loader = JSelectInLoader(source_Model, selected_relation.property, target_Model)
             loader.prepare_states(source_states)
             stmt = loader.prepare_query(stmt)
 
