@@ -11,9 +11,10 @@ from jessiql.query_object import QueryObject
 from jessiql.sainfo.columns import resolve_selected_field
 from jessiql.sainfo.relations import resolve_selected_relation
 from jessiql.testing.recreate_tables import created_tables
+from jessiql.sautil.adapt import SimpleColumnsAdapter, LeftRelationshipColumnsAdapter
 
 
-def test_test(connection: sa.engine.Connection):
+def test_joins_many_levels(connection: sa.engine.Connection):
     with created_tables(connection, Base):
         # Insert some values
         stmt = sa.insert(User).values([
@@ -89,19 +90,23 @@ def test_test(connection: sa.engine.Connection):
 
 
         # === Query User
-        Model = cls_User = sa.orm.aliased(User)
+        source_Model = None
+        target_Model = cls_User = sa.orm.aliased(User)
 
-        stmt = sa.select([]).select_from(Model)
+        selected_relation = None
+        query = q_user
 
-        # Adapter: adapts columns to use the alias
+        stmt = sa.select([]).select_from(target_Model)
+
+        # Select columns from query.select
         stmt = stmt.add_columns(*(
-            resolve_selected_field(Model, field, where='select')
-            for field in q_user.select.fields.values()
+            resolve_selected_field(target_Model, field, where='select')
+            for field in query.select.fields.values()
         ))
-        # Add columns that the relationship wants.
+        # Add columns that relationships want using query.select
         # Note: duplicate columns will be removed automatically by the select() method
         stmt = stmt.add_columns(
-            *select_local_columns_for_relations(Model, q_user, where='select')
+            *select_local_columns_for_relations(target_Model, query, where='select')
         )
 
         # Get the result, convert list[RowMapping] into list[dict]
@@ -116,17 +121,20 @@ def test_test(connection: sa.engine.Connection):
         source_Model = cls_User
         target_Model = cls_Article = sa.orm.aliased(Article)
 
-        selected_relation = q_user.select.relations['articles']
+        selected_relation = query.select.relations['articles']
         query = selected_relation.query
 
-        select_fields = [
+        stmt = sa.select([]).select_from(target_Model)
+
+        # Select columns from query.select
+        stmt = stmt.add_columns(*(
             resolve_selected_field(target_Model, field, where='select')
             for field in query.select.fields.values()
-        ]
-        # Add columns that relationships wants.
+        ))
+        # Add columns that relationships want using query.select
         # Note: duplicate columns will be removed automatically by the select() method
-        select_fields.extend(
-            select_local_columns_for_relations(target_Model, query, where='select')
+        stmt = stmt.add_columns(
+            *select_local_columns_for_relations(target_Model, query, where='select')
         )
 
         relation_attribute = resolve_selected_relation(source_Model, selected_relation, where='select')
@@ -134,8 +142,8 @@ def test_test(connection: sa.engine.Connection):
 
         loader = JSelectInLoader(source_Model, relation_property, target_Model)
         loader.prepare_states(loaded_users)
-        q = loader.prepare_query(select_fields)
-        loaded_articles = list(loader.populate_states(connection, q))
+        stmt = loader.prepare_query(stmt)
+        loaded_articles = list(loader.populate_states(connection, stmt))
 
 
 
@@ -146,14 +154,17 @@ def test_test(connection: sa.engine.Connection):
         selected_relation = selected_relation.query.select.relations['comments']
         query = selected_relation.query
 
-        select_fields = [
+        stmt = sa.select([]).select_from(target_Model)
+
+        # Select columns from query.select
+        stmt = stmt.add_columns(*(
             resolve_selected_field(target_Model, field, where='select')
             for field in query.select.fields.values()
-        ]
-        # Add columns that relationships wants.
+        ))
+        # Add columns that relationships want using query.select
         # Note: duplicate columns will be removed automatically by the select() method
-        select_fields.extend(
-            select_local_columns_for_relations(target_Model, query, where='select')
+        stmt = stmt.add_columns(
+            *select_local_columns_for_relations(target_Model, query, where='select')
         )
 
         relation_attribute = resolve_selected_relation(source_Model, selected_relation, where='select')
@@ -161,7 +172,7 @@ def test_test(connection: sa.engine.Connection):
 
         loader = JSelectInLoader(source_Model, relation_property, target_Model)
         loader.prepare_states(loaded_articles)
-        q = loader.prepare_query(select_fields)
+        q = loader.prepare_query(stmt)
         loaded_comments = list(loader.populate_states(connection, q))
 
 
@@ -174,14 +185,17 @@ def test_test(connection: sa.engine.Connection):
         selected_relation = selected_relation.query.select.relations['author']
         query = selected_relation.query
 
-        select_fields = [
+        stmt = sa.select([]).select_from(target_Model)
+
+        # Select columns from query.select
+        stmt = stmt.add_columns(*(
             resolve_selected_field(target_Model, field, where='select')
             for field in query.select.fields.values()
-        ]
-        # Add columns that relationships wants.
+        ))
+        # Add columns that relationships want using query.select
         # Note: duplicate columns will be removed automatically by the select() method
-        select_fields.extend(
-            select_local_columns_for_relations(target_Model, query, where='select')
+        stmt = stmt.add_columns(
+            *select_local_columns_for_relations(target_Model, query, where='select')
         )
 
         relation_attribute = resolve_selected_relation(source_Model, selected_relation, where='select')
@@ -189,7 +203,7 @@ def test_test(connection: sa.engine.Connection):
 
         loader = JSelectInLoader(source_Model, relation_property, target_Model)
         loader.prepare_states(loaded_comments)
-        q = loader.prepare_query(select_fields)
+        q = loader.prepare_query(stmt)
         loaded_authors = list(loader.populate_states(connection, q))
 
 
@@ -255,26 +269,9 @@ class Comment(ManyFieldsMixin, Base):
     author = sa.orm.relationship(User, back_populates='comments')
 
 
-class SimpleColumnsAdapter:
-    def __init__(self, Model: type):
-        adapter = sa.orm.util.ORMAdapter(Model)
-        self._replace = adapter.replace
-
-    def replace(self, obj):
-        return sa.sql.visitors.replacement_traverse(obj, {}, self._replace)
-
-    def replace_many(self, objs: abc.Iterable) -> abc.Iterator:
-        yield from (
-            self.replace(obj)
-            for obj in objs
-        )
 
 
-class LeftRelationshipColumnsAdapter(SimpleColumnsAdapter):
-    def __init__(self, left_model: type, relation_property: sa.orm.RelationshipProperty):
-        right_mapper = relation_property.mapper
-        adapter = sa.orm.util.ORMAdapter(left_model, equivalents=right_mapper._equivalent_columns if right_mapper else {})
-        self._replace = adapter.replace
+
 
 
 # Inspired by SelectInLoader._load_for_path() , SqlAlchemy v1.4.15
@@ -350,18 +347,12 @@ class JSelectInLoader:
             ]
 
     # Inspired by SelectInLoader._load_for_path(), part 2, SqlAlchemy v1.4.15
-    def prepare_query(self, select_fields: list[sa.sql.ClauseElement]):
+    def prepare_query(self, q: sa.sql.Select):
         # [ADDED] Adapt pk_cols
         adapter = SimpleColumnsAdapter(self.target_model)
         pk_cols = adapter.replace_many(self.query_info.pk_cols)
-        pk_cols = list(pk_cols)
 
-        q = sa.select(pk_cols)
-
-        # [ADDED] Load other fields that we want
-        q = q.add_columns(*select_fields)
-
-        q = q.select_from(self.target_model)
+        q = q.add_columns(*pk_cols)  # [CUSTOMIZED]
 
         q = q.filter(
             adapter.replace(  # [ADDED] adapter
@@ -461,10 +452,16 @@ def get_primary_key_tuple(mapper: sa.orm.Mapper, row: dict) -> tuple:
 
     Args:
         mapper: the Mapper to get the primary key from
-        row: the dict to
+        row: the dict to pluck from
     """
     return tuple(row[col.key] for col in mapper.primary_key)
 
 
 def get_foreign_key_tuple(row: dict, query_info: sa.orm.strategies.SelectInLoader.query_info) -> tuple:
+    """ Get the foreign key tuple from a row dict
+
+    Args:
+        row: the dict to pluck from
+        query_info: SqlALchemy SelectInLoader.query_info object that contains the necessary information
+    """
     return tuple(row[col.key] for col in query_info.pk_cols)
