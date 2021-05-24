@@ -13,7 +13,7 @@ from sqlalchemy.orm import (  # type: ignore[attr-defined]  # sqlalchemy stubs n
 )
 from sqlalchemy.orm.dynamic import DynaLoader
 
-from jessiql.sainfo.format import model_name
+from jessiql.sainfo.names import model_name
 from jessiql.typing import SAModelOrAlias, SAAttribute
 from jessiql import query_object
 from jessiql import exc

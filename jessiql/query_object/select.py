@@ -13,6 +13,7 @@ import sqlalchemy.orm
 
 from jessiql import exc
 from jessiql.typing import SAAttribute
+from jessiql.sainfo.names import field_name
 
 
 @dataclass
@@ -31,20 +32,12 @@ class Select:
             **self.relations,
         }
 
-    def __contains__(self, field: Union[str, SAAttribute]):
-        # Get the name
-        if isinstance(field, sa.orm.InstrumentedAttribute):  # type: ignore[attr-defined]  # sqlalchemy stubs not updated
-            field_name = field.key
-        elif isinstance(field, str):
-            field_name = field
-        else:
-            raise NotImplementedError(field)
+    @cached_property
+    def names(self) -> frozenset[str]:
+        return frozenset(self.fields) | frozenset(self.relations)
 
-        # Contains?
-        return (
-            field_name in self.fields or
-            field_name in self.relations
-        )
+    def __contains__(self, field: Union[str, SAAttribute]):
+        return field_name(field) in self.names
 
     @classmethod
     def from_query_object(cls, select: list[Union[str, dict]], join: dict[str, dict]):
@@ -91,7 +84,7 @@ class SelectedField:
     is_array: bool
     is_json: bool
 
-    __slots__ = ('name', 'property', 'is_array', 'is_json')
+    __slots__ = 'name', 'property', 'is_array', 'is_json'
 
 
 @dataclass
@@ -107,7 +100,7 @@ class SelectedRelation:
     property: sa.orm.ColumnProperty
     uselist: bool
 
-    __slots__ = ('name', 'query', 'property', 'uselist')
+    __slots__ = 'name', 'query', 'property', 'uselist'
 
 
 from .query_object import QueryObject

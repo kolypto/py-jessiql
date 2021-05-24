@@ -14,7 +14,7 @@ from sqlalchemy.orm import (  # type: ignore[attr-defined]  # sqlalchemy stubs n
     MapperProperty,
 )
 
-from jessiql.sainfo.format import model_name
+from jessiql.sainfo.names import model_name
 from jessiql.typing import SAModelOrAlias, SAAttribute
 from jessiql import query_object
 from jessiql import exc
@@ -27,6 +27,15 @@ def resolve_selected_field(Model: SAModelOrAlias, field: query_object.SelectedFi
     field.property = attribute.property
     field.is_array = is_array(attribute)
     field.is_json = is_json(attribute)
+
+    return attribute
+
+
+def resolve_sorting_field(Model: SAModelOrAlias, field: query_object.SortingField, *, where: str) -> InstrumentedAttribute:
+    attribute = resolve_column_by_name(Model, field.name, where=where)
+
+    # Populate the missing fields
+    field.property = attribute.property
 
     return attribute
 

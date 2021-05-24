@@ -7,3 +7,4 @@ They do not interact with SqlAlchemy in any way.
 from .query_object import QueryObject, QueryObjectDict
 
 from .select import Select, SelectedField, SelectedRelation
+from .sort import Sort, SortingField, SortingDirection
