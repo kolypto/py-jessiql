@@ -90,6 +90,26 @@ def test_joins_many_levels(connection: sa.engine.Connection):
         ))
 
 
+
+
+        def joined_query(connection: sa.engine.Connection, source_Model: type, target_Model: type, selected_relation: SelectedRelation, source_states: list[dict]):
+            query = selected_relation.query
+
+            relation_attribute = resolve_selected_relation(source_Model, selected_relation, where='select')
+            relation_property: sa.orm.RelationshipProperty = relation_attribute.property
+
+            stmt = sa.select([]).select_from(target_Model)
+            stmt = add_selected_fields_to_statement(stmt, target_Model, query)
+
+            # Joined Loader
+            loader = JSelectInLoader(source_Model, relation_property, target_Model)
+            loader.prepare_states(source_states)
+            stmt = loader.prepare_query(stmt)
+
+            # Done
+            yield from loader.populate_states(connection, stmt)
+
+
         # === Query User
         source_Model = None
         target_Model = cls_User = sa.orm.aliased(User)
@@ -98,27 +118,11 @@ def test_joins_many_levels(connection: sa.engine.Connection):
         query = q_user
 
         stmt = sa.select([]).select_from(target_Model)
-
-        # Select columns from query.select
-        stmt = stmt.add_columns(*(
-            resolve_selected_field(target_Model, field, where='select')
-            for field in query.select.fields.values()
-        ))
-        # Add columns that relationships want using query.select
-        # Note: duplicate columns will be removed automatically by the select() method
-        stmt = stmt.add_columns(
-            *select_local_columns_for_relations(target_Model, query, where='select')
-        )
+        stmt = add_selected_fields_to_statement(stmt, target_Model, query)
 
         # Get the result, convert list[RowMapping] into list[dict]
         res: sa.engine.CursorResult = connection.execute(stmt)
         loaded_users = [dict(row) for row in res.mappings()]  # TODO: use fetchmany() or partitions()
-
-
-
-
-
-
 
 
         # === Query User.articles
@@ -213,23 +217,6 @@ class Comment(ManyFieldsMixin, Base):
     user_id = sa.Column(sa.ForeignKey(User.id))
     author = sa.orm.relationship(User, back_populates='comments')
 
-
-def joined_query(connection: sa.engine.Connection, source_Model: type, target_Model: type, selected_relation: SelectedRelation, source_states: list[dict]):
-    query = selected_relation.query
-
-    relation_attribute = resolve_selected_relation(source_Model, selected_relation, where='select')
-    relation_property: sa.orm.RelationshipProperty = relation_attribute.property
-
-    stmt = sa.select([]).select_from(target_Model)
-    stmt = add_selected_fields_to_statement(stmt, target_Model, query)
-
-    # Joined Loader
-    loader = JSelectInLoader(source_Model, relation_property, target_Model)
-    loader.prepare_states(source_states)
-    stmt = loader.prepare_query(stmt)
-
-    # Done
-    yield from loader.populate_states(connection, stmt)
 
 
 def add_selected_fields_to_statement(stmt: sa.sql.Select, target_Model: type, query: QueryObject):
