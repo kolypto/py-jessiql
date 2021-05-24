@@ -66,7 +66,7 @@ def test_joins_many_levels(connection: sa.engine.Connection):
 
 
         # Prepare some sample input object
-        q_user = QueryObject.from_query_object(dict(
+        query = QueryObject.from_query_object(dict(
             # Top level: the primary entity
             select=['id', 'a'],
             join={
@@ -89,8 +89,13 @@ def test_joins_many_levels(connection: sa.engine.Connection):
             },
         ))
 
+        def simple_query(connection: sa.engine.Connection, target_Model: type, query: QueryObject) -> abc.Iterator[dict]:
+            stmt = sa.select([]).select_from(target_Model)
+            stmt = add_selected_fields_to_statement(stmt, target_Model, query)
 
-
+            # Get the result, convert list[RowMapping] into list[dict]
+            res: sa.engine.CursorResult = connection.execute(stmt)
+            yield from (dict(row) for row in res.mappings())  # TODO: use fetchmany() or partitions()
 
         def joined_query(connection: sa.engine.Connection, source_Model: type, target_Model: type, selected_relation: SelectedRelation, source_states: list[dict]):
             query = selected_relation.query
@@ -107,22 +112,15 @@ def test_joins_many_levels(connection: sa.engine.Connection):
             stmt = loader.prepare_query(stmt)
 
             # Done
-            yield from loader.populate_states(connection, stmt)
+            yield from loader.fetch_results_and_populate_states(connection, stmt)
 
 
         # === Query User
-        source_Model = None
-        target_Model = cls_User = sa.orm.aliased(User)
-
-        selected_relation = None
-        query = q_user
-
-        stmt = sa.select([]).select_from(target_Model)
-        stmt = add_selected_fields_to_statement(stmt, target_Model, query)
-
-        # Get the result, convert list[RowMapping] into list[dict]
-        res: sa.engine.CursorResult = connection.execute(stmt)
-        loaded_users = [dict(row) for row in res.mappings()]  # TODO: use fetchmany() or partitions()
+        loaded_users = list(simple_query(
+            connection,
+            target_Model=(cls_User := sa.orm.aliased(User)),
+            query=query
+        ))
 
 
         # === Query User.articles
@@ -218,8 +216,7 @@ class Comment(ManyFieldsMixin, Base):
     author = sa.orm.relationship(User, back_populates='comments')
 
 
-
-def add_selected_fields_to_statement(stmt: sa.sql.Select, target_Model: type, query: QueryObject):
+def add_selected_fields_to_statement(stmt: sa.sql.Select, target_Model: type, query: QueryObject) -> sa.sql.Select:
     # Select columns from query.select
     stmt = stmt.add_columns(*(
         resolve_selected_field(target_Model, field, where='select')
@@ -324,7 +321,7 @@ class JSelectInLoader:
 
         return q
 
-    def populate_states(self, connection: sa.engine.Connection, q: sa.sql.Select) -> abc.Iterator[dict]:
+    def fetch_results_and_populate_states(self, connection: sa.engine.Connection, q: sa.sql.Select) -> abc.Iterator[dict]:
         if self.query_info.load_only_child:
             yield from self._load_via_child(connection, self.our_states, self.none_states, q)
         else:
