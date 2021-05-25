@@ -3,9 +3,11 @@
 import sqlalchemy as sa
 from collections import abc
 
+from jessiql.typing import SAModelOrAlias
+
 
 class SimpleColumnsAdapter:
-    def __init__(self, Model: type):
+    def __init__(self, Model: SAModelOrAlias):
         adapter = sa.orm.util.ORMAdapter(Model)
         self._replace = adapter.replace
 
@@ -20,7 +22,7 @@ class SimpleColumnsAdapter:
 
 
 class LeftRelationshipColumnsAdapter(SimpleColumnsAdapter):
-    def __init__(self, left_model: type, relation_property: sa.orm.RelationshipProperty):
+    def __init__(self, left_model: SAModelOrAlias, relation_property: sa.orm.RelationshipProperty):
         right_mapper = relation_property.mapper
         adapter = sa.orm.util.ORMAdapter(left_model, equivalents=right_mapper._equivalent_columns if right_mapper else {})
         self._replace = adapter.replace

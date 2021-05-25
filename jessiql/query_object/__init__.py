@@ -9,6 +9,8 @@ from .query_object import QueryObject, QueryObjectDict
 from .select import Select, SelectedField, SelectedRelation
 from .sort import Sort, SortingField, SortingDirection
 from .filter import Filter, FilterExpressionBase, FieldExpression, BooleanExpression
+from .skip import Skip
+from .limit import Limit
 
 from .resolve import (
     resolve_selected_field,

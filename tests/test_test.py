@@ -87,6 +87,7 @@ def test_joins_many_levels(connection: sa.engine.Connection):
                         ),
                     },
                     sort=['id-'],
+                    limit=1,
                 ),
             },
             sort=['id-'],
@@ -107,6 +108,10 @@ def test_joins_many_levels(connection: sa.engine.Connection):
             stmt = filter_op.apply_to_statement(stmt)
             sort_op = operations.SortOperation(query, target_Model)
             stmt = sort_op.apply_to_statement(stmt)
+            skiplimit_op = operations.SkipLimitOperation(query, target_Model)
+            stmt = skiplimit_op.apply_to_statement(stmt)
+
+            print(str(stmt))
 
             # Get the result, convert list[RowMapping] into list[dict]
             res: sa.engine.CursorResult = connection.execute(stmt)
@@ -123,6 +128,13 @@ def test_joins_many_levels(connection: sa.engine.Connection):
             stmt = filter_op.apply_to_statement(stmt)
             sort_op = operations.SortOperation(query, target_Model)
             stmt = sort_op.apply_to_statement(stmt)
+            skiplimit_op = operations.SkipLimitOperation(query, target_Model)
+            stmt = skiplimit_op.apply_to_related_statement(
+                stmt,
+                selected_relation.property.remote_side
+            )
+
+            print(str(stmt))
 
             # Joined Loader
             loader = JSelectInLoader(source_Model, selected_relation.property, target_Model)
@@ -333,7 +345,7 @@ class JSelectInLoader:
     # Inspired by SelectInLoader._load_via_parent() , SqlAlchemy v1.4.15
     def _load_via_parent(self, connection: sa.engine.Connection, our_states: list[SARowDict], q: sa.sql.Select) -> abc.Iterator[SARowDict]:
         uselist: bool = self.relation_property.uselist
-        _empty_result = () if uselist else None
+        _empty_result = lambda: [] if uselist else None
 
         while our_states:
             chunk = our_states[0: self.CHUNKSIZE]
@@ -355,7 +367,7 @@ class JSelectInLoader:
                 )
 
             for key, state_dict in chunk:
-                collection = data.get(key, _empty_result)
+                collection = data.get(key, _empty_result())
 
                 if not uselist and collection:
                     if len(collection) > 1:
