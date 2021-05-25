@@ -90,6 +90,12 @@ def test_joins_many_levels(connection: sa.engine.Connection):
                 ),
             },
             sort=['id-'],
+            filter={
+                '$and': [
+                    {'id': {'$gt': 0}},
+                    {'id': {'$gte': 0}},
+                ]
+            },
         ))
 
         def simple_query(connection: sa.engine.Connection, target_Model: SAModelOrAlias, query: QueryObject) -> abc.Iterator[SARowDict]:
@@ -97,6 +103,8 @@ def test_joins_many_levels(connection: sa.engine.Connection):
 
             select_op = operations.SelectOperation(query, target_Model)
             stmt = select_op.apply_to_statement(stmt)
+            filter_op = operations.FilterOperation(query, target_Model)
+            stmt = filter_op.apply_to_statement(stmt)
             sort_op = operations.SortOperation(query, target_Model)
             stmt = sort_op.apply_to_statement(stmt)
 
@@ -111,6 +119,8 @@ def test_joins_many_levels(connection: sa.engine.Connection):
 
             select_op = operations.SelectOperation(query, target_Model)
             stmt = select_op.apply_to_statement(stmt)
+            filter_op = operations.FilterOperation(query, target_Model)
+            stmt = filter_op.apply_to_statement(stmt)
             sort_op = operations.SortOperation(query, target_Model)
             stmt = sort_op.apply_to_statement(stmt)
 

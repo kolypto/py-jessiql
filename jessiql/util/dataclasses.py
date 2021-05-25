@@ -1,3 +1,4 @@
+from dataclasses import fields
 from sqlalchemy.util import symbol
 
 
@@ -8,6 +9,10 @@ def dataclass_defaults(**defaults):
     This decorator force-feeds default values to the constructor.
     """
     def wrapper(cls):
+        # Check
+        unk_field_names = set(defaults) - set(dataclass_field_names(cls))
+        assert not unk_field_names, f'Dataclass does not have these fields: {unk_field_names}'
+
         # Replace __init__(), feed defaults
         original_init = cls.__init__
 
@@ -19,6 +24,20 @@ def dataclass_defaults(**defaults):
         return cls
 
     return wrapper
+
+
+def dataclass_notset(*names):
+    """ Feed default NOTSETs to a dataclass """
+    return dataclass_defaults(**{
+        name: NOTSET
+        for name in names
+    })
+
+
+def dataclass_field_names(cls):
+    return tuple(
+        field.name for field in fields(cls)
+    )
 
 
 # Marker for values not yet set

@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from collections import abc
 from dataclasses import dataclass
 from enum import Enum
 
@@ -15,7 +14,7 @@ import sqlalchemy.orm
 from jessiql import exc
 from jessiql.sainfo.names import field_name
 from jessiql.typing import SAAttribute
-from jessiql.util.dataclasses import dataclass_defaults, NOTSET
+from jessiql.util.dataclasses import dataclass_notset
 
 
 @dataclass
@@ -33,7 +32,7 @@ class Sort:
     def from_query_object(cls, sort: list[str]):
         # Check types
         if not isinstance(sort, list):
-            raise exc.QueryObjectError(f'"sort" must be a list')
+            raise exc.QueryObjectError(f'"sort" must be an array')
 
         # Construct
         fields = [cls.parse_input_field(field) for field in sort]
@@ -57,7 +56,7 @@ class Sort:
         return SortingField(name=name, direction=direction)
 
 
-@dataclass_defaults(property=NOTSET)
+@dataclass_notset('property')
 @dataclass
 class SortingField:
     name: str

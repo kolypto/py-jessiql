@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import sqlalchemy as sa
 import sqlalchemy.orm
+import sqlalchemy.sql.elements
 from sqlalchemy.orm import (  # type: ignore[attr-defined]  # sqlalchemy stubs not updated
     InstrumentedAttribute,
 )
@@ -20,6 +21,9 @@ from . import (
     SelectedRelation,
     SortingField,
     SortingDirection,
+    FilterExpressionBase,
+    FieldExpression,
+    BooleanExpression,
 )
 
 
@@ -58,5 +62,26 @@ def resolve_selected_relation(Model: SAModelOrAlias, field: SelectedRelation, *,
     # Populate the missing fields
     field.property = attribute.property
     field.uselist = field.property.uselist
+
+    return attribute
+
+
+def resolve_filtering_expression(Model: SAModelOrAlias, expression: FilterExpressionBase, *, where: str) -> None:
+    if isinstance(expression, FieldExpression):
+        resolve_filtering_field_expression(Model, expression, where=where)
+    elif isinstance(expression, BooleanExpression):
+        for clause in expression.clauses:
+            resolve_filtering_expression(Model, clause, where=where)
+    else:
+        raise NotImplementedError(repr(expression))
+
+
+def resolve_filtering_field_expression(Model: SAModelOrAlias, expression: FieldExpression, *, where: str) -> InstrumentedAttribute:
+    attribute = resolve_column_by_name(Model, expression.field, where=where)
+
+    # Populate the missing fields
+    expression.property = attribute.property
+    expression.is_array = is_array(attribute)
+    expression.is_json = is_json(attribute)
 
     return attribute
