@@ -93,7 +93,7 @@ class SelectedRelation:
     query: QueryObject
 
     # Populated when resolved by resolve_selected_relation()
-    property: sa.orm.ColumnProperty
+    property: sa.orm.RelationshipProperty
     uselist: bool
 
     __slots__ = 'name', 'query', 'property', 'uselist'

@@ -8,7 +8,18 @@ from .sort import SortOperation
 
 
 class SkipLimitOperation(Operation):
-    def apply_to_statement(self, stmt: sa.sql.Select, *, using_fk_columns: list[SAAttribute] = None) -> sa.sql.Select:
+    _window_over_foreign_keys: list[SAAttribute] = None
+
+    def paginate_over_foreign_keys(self, fk_columns: list[SAAttribute]):
+        self._window_over_foreign_keys = fk_columns
+
+    def apply_to_statement(self, stmt: sa.sql.Select) -> sa.sql.Select:
+        if self._window_over_foreign_keys:
+            return self._apply_window_over_foreign_key_pagination(stmt, fk_columns=self._window_over_foreign_keys)
+        else:
+            return self._apply_simple_skiplimit_pagination(stmt)
+
+    def _apply_simple_skiplimit_pagination(self, stmt: sa.sql.Select):
         skip, limit = self.query.skip.skip, self.query.limit.limit
 
         if skip:
@@ -19,10 +30,10 @@ class SkipLimitOperation(Operation):
         # Done
         return stmt
 
-    def apply_to_related_statement(self, stmt: sa.sql.Select, fk_columns: list[SAAttribute]) -> sa.sql.Select:
+    def _apply_window_over_foreign_key_pagination(self, stmt: sa.sql.Select, *, fk_columns: list[SAAttribute]) -> sa.sql.Select:
         """ Instead of the usual limit, use a window function over the given columns.
 
-        This method is used with the selectin-load loading stragegy to load a limited number of related
+        This method is used with the selectin-load loading strategy to load a limited number of related
         items per every primary entity. Instead of using LIMIT, we will group rows over `fk_columns`,
         and impose a limit per group.
 
@@ -77,7 +88,11 @@ class SkipLimitOperation(Operation):
             .subquery()
             ._anonymous_fromclause()
         )
-        stmt = sa.select(subquery.c).select_from(subquery)
+        stmt = sa.select([
+            column
+            for column in subquery.c
+            if column.key != '__group_row_n'  # skip this column. We don't need it.
+        ]).select_from(subquery)
 
         # Apply the LIMIT condition using row numbers
         # These two statements simulate skip/limit using window functions

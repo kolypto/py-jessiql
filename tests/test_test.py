@@ -5,7 +5,7 @@ import sqlalchemy as sa
 from jessiql import operations
 from jessiql.query_object import QueryObject
 from jessiql.query_object import SelectedRelation
-from jessiql.sautil.jselectinloader import JSelectInLoader
+from jessiql.query.jselectinloader import JSelectInLoader
 from jessiql.testing.recreate_tables import created_tables
 from jessiql.typing import SAModelOrAlias, SARowDict
 
@@ -131,11 +131,8 @@ def test_joins_many_levels(connection: sa.engine.Connection):
             # NOTE: this has to be done last, because it wraps everything into a subquery, and a different alias has to be used
             # in order to refer to columns of this query.
             skiplimit_op = operations.SkipLimitOperation(query, target_Model)
-            stmt = skiplimit_op.apply_to_related_statement(
-                # This one is different from top-level statement because we have to use window functions for pagination
-                stmt,
-                selected_relation.property.remote_side
-            )
+            skiplimit_op.paginate_over_foreign_keys(selected_relation.property.remote_side)
+            stmt = skiplimit_op.apply_to_statement(stmt)
 
             print(str(stmt))
 

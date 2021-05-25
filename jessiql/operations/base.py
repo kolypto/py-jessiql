@@ -7,6 +7,9 @@ from jessiql.typing import SAModelOrAlias
 
 
 class Operation:
+    query: QueryObject
+    target_Model: SAModelOrAlias
+
     def __init__(self, query: QueryObject, target_Model: SAModelOrAlias):
         self.query = query
         self.target_Model = target_Model
