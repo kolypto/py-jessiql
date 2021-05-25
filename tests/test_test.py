@@ -9,10 +9,9 @@ import sqlalchemy.orm.strategies
 
 from jessiql.query_object import QueryObject
 from jessiql.query_object import SelectedRelation
-from jessiql.query_object import resolve_selected_field, resolve_sorting_field_with_direction, resolve_selected_relation
 from jessiql import operations
 from jessiql.testing.recreate_tables import created_tables
-from jessiql.sautil.adapt import SimpleColumnsAdapter, LeftRelationshipColumnsAdapter
+from jessiql.sautil.adapt import SimpleColumnsAdapter
 from jessiql.typing import SAModelOrAlias, SARowDict
 
 
