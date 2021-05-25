@@ -67,5 +67,24 @@ class SkipLimitOperation(Operation):
             .label('__group_row_n')
         )
 
+        # Wrap ourselves into a subquery.
+        # This is necessary because Postgres does not let you reference SELECT aliases in the WHERE clause.
+        # Reason: WHERE clause is executed before SELECT
+        subquery = (
+            # Taken from: Query.from_self()
+            stmt
+            .correlate(None)
+            .subquery()
+            ._anonymous_fromclause()
+        )
+        stmt = sa.select(subquery.c).select_from(subquery)
+
+        # Apply the LIMIT condition using row numbers
+        # These two statements simulate skip/limit using window functions
+        if skip:
+            stmt = stmt.filter(sa.sql.literal_column('__group_row_n') > skip)
+        if limit:
+            stmt = stmt.filter(sa.sql.literal_column('__group_row_n') <= ((skip or 0) + limit))
+
         # Done
         return stmt
