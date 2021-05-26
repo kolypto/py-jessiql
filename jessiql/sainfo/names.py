@@ -1,15 +1,14 @@
+import sqlalchemy as sa
 from typing import Union
 
-import sqlalchemy as sa
-import sqlalchemy.orm
-
 from jessiql.typing import SAModelOrAlias, SAAttribute
+from .models import unaliased_class
 
 
 def model_name(Model: SAModelOrAlias) -> str:
     """ Get the name of the Model for this class """
     # We can't do `Model.__name__` because we can be given a type of an aliased class
-    return Model.__mapper__.class_.__name__
+    return unaliased_class(Model).__name__
 
 
 def field_name(field: Union[str, SAAttribute]) -> str:
