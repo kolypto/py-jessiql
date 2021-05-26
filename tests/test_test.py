@@ -3,6 +3,7 @@ from collections import abc
 import sqlalchemy as sa
 
 from jessiql import operations
+from jessiql.query import Query
 from jessiql.query_object import QueryObject
 from jessiql.query_object import SelectedRelation
 from jessiql.query.jselectinloader import JSelectInLoader
@@ -44,22 +45,6 @@ def test_joins_many_levels(connection: sa.engine.Connection):
         connection.execute(stmt)
 
 
-
-        from sqlalchemy.orm import Session
-        from contextlib import closing
-
-        with closing(Session(bind=connection)) as ssn:
-            print('=== User.articles')
-            users = ssn.query(User).options(sa.orm.selectinload(User.articles)).all()
-
-        with closing(Session(bind=connection)) as ssn:
-            print('=== Article.author')
-            articles = ssn.query(Article).options(sa.orm.selectinload(Article.author)).all()
-
-        print('\n'*5)
-
-
-
         # Prepare some sample input object
         query = QueryObject.from_query_object(dict(
             # Top level: the primary entity
@@ -76,8 +61,10 @@ def test_joins_many_levels(connection: sa.engine.Connection):
                                 # Fourth level: the related entity, one-to-many (!)
                                 'author': dict(
                                     select=['a'],
+                                    limit=100,
                                 )
-                            }
+                            },
+                            limit=100,
                         ),
                     },
                     sort=['id-'],
@@ -93,94 +80,11 @@ def test_joins_many_levels(connection: sa.engine.Connection):
             },
         ))
 
-        def simple_query(connection: sa.engine.Connection, target_Model: SAModelOrAlias, query: QueryObject) -> abc.Iterator[SARowDict]:
-            stmt = sa.select([]).select_from(target_Model)
-
-            select_op = operations.SelectOperation(query, target_Model)
-            stmt = select_op.apply_to_statement(stmt)
-            filter_op = operations.FilterOperation(query, target_Model)
-            stmt = filter_op.apply_to_statement(stmt)
-            sort_op = operations.SortOperation(query, target_Model)
-            stmt = sort_op.apply_to_statement(stmt)
-            skiplimit_op = operations.SkipLimitOperation(query, target_Model)
-            stmt = skiplimit_op.apply_to_statement(stmt)
-
-            print(str(stmt))
-
-            # Get the result, convert list[RowMapping] into list[dict]
-            res: sa.engine.CursorResult = connection.execute(stmt)
-            yield from (dict(row) for row in res.mappings())  # TODO: use fetchmany() or partitions()
-
-        def joined_query(connection: sa.engine.Connection, source_Model: SAModelOrAlias, target_Model: SAModelOrAlias, selected_relation: SelectedRelation, source_states: list[SARowDict]):
-            query = selected_relation.query
-
-            stmt = sa.select([]).select_from(target_Model)
-
-            # Joined Loader
-            loader = JSelectInLoader(source_Model, selected_relation.property, target_Model)
-            loader.prepare_states(source_states)
-            stmt = loader.prepare_query(stmt)
-
-            select_op = operations.SelectOperation(query, target_Model)
-            stmt = select_op.apply_to_statement(stmt)
-            filter_op = operations.FilterOperation(query, target_Model)
-            stmt = filter_op.apply_to_statement(stmt)
-            sort_op = operations.SortOperation(query, target_Model)
-            stmt = sort_op.apply_to_statement(stmt)
-
-            # NOTE: this has to be done last, because it wraps everything into a subquery, and a different alias has to be used
-            # in order to refer to columns of this query.
-            skiplimit_op = operations.SkipLimitOperation(query, target_Model)
-            skiplimit_op.paginate_over_foreign_keys(selected_relation.property.remote_side)
-            stmt = skiplimit_op.apply_to_statement(stmt)
-
-            print(str(stmt))
-
-            # Done
-            yield from loader.fetch_results_and_populate_states(connection, stmt)
-
-
         # === Query User
-        loaded_users = list(simple_query(
-            connection,
-            target_Model=(cls_User := sa.orm.aliased(User)),
-            query=query
-        ))
+        q = Query(query, User)
+        users = q.fetchall(connection)
 
-
-        # === Query User.articles
-        loaded_articles = list(joined_query(
-            connection,
-            source_Model=cls_User,
-            target_Model=sa.orm.aliased(Article),
-            selected_relation=(selected_relation := query.select.relations['articles']),
-            source_states=loaded_users,
-        ))
-
-
-
-        # === Query Article.comments
-        loaded_comments = list(joined_query(
-            connection,
-            source_Model=Article,
-            target_Model=sa.orm.aliased(Comment),
-            selected_relation=(selected_relation := selected_relation.query.select.relations['comments']),
-            source_states=loaded_articles,
-        ))
-
-
-
-        # === Query Comment.author
-        loaded_authors = list(joined_query(
-            connection,
-            source_Model=Comment,
-            target_Model=sa.orm.aliased(User),
-            selected_relation=(selected_relation := selected_relation.query.select.relations['author']),
-            source_states=loaded_comments,
-        ))
-
-
-        __import__('pprint').pprint(loaded_users)
+        __import__('pprint').pprint(users)
 
 
     __import__('pytest').fail(pytrace=False)

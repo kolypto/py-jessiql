@@ -60,6 +60,11 @@ def is_relation_dynamic_loader(attribute: SAAttribute):
 
 # region Relation info
 
+def is_array(attribute: SAAttribute) -> bool:
+    return attribute.property.uselist
 
+
+def target_model(attribute: SAAttribute) -> type:
+    return attribute.property.mapper.class_
 
 # endregion

@@ -23,26 +23,32 @@ class Query:
         self.sort_op = self.SortOperation(query, target_Model)
         self.skiplimit_op = self.SkipLimitOperation(query, target_Model)
 
-        # Init every relation
-        self.relations = {
-            relation.name: JoinedQuery(query, ...)
-            for relation in query.select.relations.values()
-        }
-
     SelectOperation = operations.SelectOperation
     FilterOperation = operations.FilterOperation
     SortOperation = operations.SortOperation
     SkipLimitOperation = operations.SkipLimitOperation
-    JoinedQuery = JoinedQuery
 
-    def all(self, connection: sa.engine.Connection) -> list[SARowDict]:
+    def fetchall(self, connection: sa.engine.Connection) -> list[SARowDict]:
         # Load all results
         states = list(self._load_results(connection))
 
-        #
+        # Load all relations
+        self._load_relations(connection, states)
 
         # Done
         return states
+
+    def _load_relations(self, connection: sa.engine.Connection, states: list[SARowDict]):
+        """ Load every relation's rows """
+        for relation in self.query.select.relations.values():
+            target_Model = relation.property.mapper.class_
+
+            query = JoinedQuery(relation.query, target_Model).for_relation(
+                relation,
+                source_Model=self.target_Model,
+                source_states=states
+            )
+            query.fetchall(connection)
 
     def _load_results(self, connection: sa.engine.Connection) -> abc.Iterator[SARowDict]:
         # Get the result, convert list[RowMapping] into list[dict]
@@ -50,7 +56,7 @@ class Query:
         res: sa.engine.CursorResult = connection.execute(stmt)
         yield from (dict(row) for row in res.mappings())  # TODO: use fetchmany() or partitions()
 
-    def _statement(self) -> sa.sql.Statement:
+    def _statement(self) -> sa.sql.Select:
         stmt = sa.select([]).select_from(self.target_Model)
 
         stmt = self._apply_operations_to_statement(stmt)
@@ -85,5 +91,5 @@ class JoinedQuery(Query):
 
     def _apply_operations_to_statement(self, stmt: sa.sql.Select) -> sa.sql.Select:
         stmt = self.loader.prepare_query(stmt)
-        stmt = super()._apply_operations_to_statement(stmt)
-        return stmt
+
+        return super()._apply_operations_to_statement(stmt)
