@@ -6,8 +6,6 @@ These methods take QueryObject classes and "resolve" them: augment them with inf
 from __future__ import annotations
 
 import sqlalchemy as sa
-import sqlalchemy.orm
-import sqlalchemy.sql.elements
 from sqlalchemy.orm import (  # type: ignore[attr-defined]  # sqlalchemy stubs not updated
     InstrumentedAttribute,
 )

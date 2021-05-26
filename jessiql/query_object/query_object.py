@@ -15,6 +15,8 @@ class QueryObject:
     skip: Skip
     limit: Limit
 
+    __slots__ = 'select', 'filter', 'sort', 'skip', 'limit'
+
     @classmethod
     def from_query_object(cls, query_object: QueryObjectDict):
         return QueryObject(

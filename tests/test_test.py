@@ -1,14 +1,8 @@
-from collections import abc
-
 import sqlalchemy as sa
 
-from jessiql import operations
-from jessiql.query import Query
+from jessiql.query import QueryExecutor
 from jessiql.query_object import QueryObject
-from jessiql.query_object import SelectedRelation
-from jessiql.query.jselectinloader import JSelectInLoader
 from jessiql.testing.recreate_tables import created_tables
-from jessiql.typing import SAModelOrAlias, SARowDict
 
 
 def test_joins_many_levels(connection: sa.engine.Connection):
@@ -81,7 +75,7 @@ def test_joins_many_levels(connection: sa.engine.Connection):
         ))
 
         # === Query User
-        q = Query(query, User)
+        q = QueryExecutor(query, User)
         users = q.fetchall(connection)
 
         __import__('pprint').pprint(users)
