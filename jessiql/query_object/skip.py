@@ -7,9 +7,11 @@ from typing import Optional
 
 from jessiql import exc
 
+from .base import OperationInputBase
+
 
 @dataclass
-class Skip:
+class Skip(OperationInputBase):
     skip: Optional[int]
 
     @classmethod

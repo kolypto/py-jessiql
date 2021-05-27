@@ -7,9 +7,11 @@ from typing import Optional
 
 from jessiql import exc
 
+from .base import OperationInputBase
+
 
 @dataclass
-class Limit:
+class Limit(OperationInputBase):
     limit: Optional[int]
 
     @classmethod

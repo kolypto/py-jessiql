@@ -16,9 +16,11 @@ from jessiql.sainfo.names import field_name
 from jessiql.typing import SAAttribute
 from jessiql.util.dataclasses import dataclass_notset
 
+from .base import OperationInputBase
+
 
 @dataclass
-class Sort:
+class Sort(OperationInputBase):
     fields: list[SortingField]
 
     @cached_property

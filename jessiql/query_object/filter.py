@@ -12,9 +12,11 @@ from jessiql import exc
 from jessiql.util.dataclasses import dataclass_notset
 from jessiql.util.funcy import collecting
 
+from .base import OperationInputBase
+
 
 @dataclass
-class Filter:
+class Filter(OperationInputBase):
     conditions: list[FilterExpressionBase]
 
     @classmethod

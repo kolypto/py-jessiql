@@ -5,6 +5,8 @@ These methods take QueryObject classes and "resolve" them: augment them with inf
 
 from __future__ import annotations
 
+from functools import singledispatch
+
 import sqlalchemy as sa
 from sqlalchemy.orm import (  # type: ignore[attr-defined]  # sqlalchemy stubs not updated
     InstrumentedAttribute,
@@ -15,10 +17,14 @@ from jessiql.sainfo.relations import resolve_relation_by_name
 from jessiql.typing import SAModelOrAlias
 
 from . import (
+    OperationInputBase,
+    Select,
     SelectedField,
     SelectedRelation,
+    Sort,
     SortingField,
     SortingDirection,
+    Filter,
     FilterExpressionBase,
     FieldExpression,
     BooleanExpression,

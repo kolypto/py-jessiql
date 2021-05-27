@@ -16,9 +16,11 @@ from jessiql.typing import SAAttribute
 from jessiql.sainfo.names import field_name
 from jessiql.util.dataclasses import dataclass_notset
 
+from .base import OperationInputBase
+
 
 @dataclass
-class Select:
+class Select(OperationInputBase):
     fields: dict[str, SelectedField]
     relations: dict[str, SelectedRelation]
 
