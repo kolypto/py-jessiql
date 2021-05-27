@@ -1,6 +1,6 @@
 import sqlalchemy as sa
 
-from jessiql.query import QueryExecutor
+from jessiql.engine import JessiQL
 from jessiql.query_object import QueryObject
 from jessiql.testing.recreate_tables import created_tables
 
@@ -40,7 +40,7 @@ def test_joins_many_levels(connection: sa.engine.Connection):
 
 
         # Prepare some sample input object
-        query = QueryObject.from_query_object(dict(
+        query = dict(
             # Top level: the primary entity
             select=['id', 'a'],
             join={
@@ -72,10 +72,10 @@ def test_joins_many_levels(connection: sa.engine.Connection):
                     {'id': {'$gte': 0}},
                 ]
             },
-        ))
+        )
 
         # === Query User
-        q = QueryExecutor(query, User)
+        q = JessiQL(query, User)
         users = q.fetchall(connection)
 
         __import__('pprint').pprint(users)
