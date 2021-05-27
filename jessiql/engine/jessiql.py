@@ -1,3 +1,5 @@
+from functools import partial
+
 from typing import Union
 
 from jessiql.query_object import QueryObject, QueryObjectDict
@@ -11,3 +13,7 @@ class JessiQL(QueryExecutor):
             query = QueryObject.from_query_object(query)
 
         super().__init__(query, target_Model)
+
+    @classmethod
+    def prepare(cls, target_Model: type):
+        return partial(cls, target_Model=target_Model)

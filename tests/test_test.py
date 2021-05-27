@@ -75,7 +75,9 @@ def test_joins_many_levels(connection: sa.engine.Connection):
         )
 
         # === Query User
-        q = JessiQL(query, User)
+        qUser = JessiQL.prepare(User)
+
+        q = qUser(query)
         users = q.fetchall(connection)
 
         __import__('pprint').pprint(users)
