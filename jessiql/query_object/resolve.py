@@ -17,7 +17,7 @@ from jessiql.sainfo.relations import resolve_relation_by_name
 from jessiql.typing import SAModelOrAlias
 
 from . import (
-    OperationInputBase,
+    QueryObject,
     Select,
     SelectedField,
     SelectedRelation,
@@ -25,13 +25,56 @@ from . import (
     SortingField,
     SortingDirection,
     Filter,
-    FilterExpressionBase,
     FieldExpression,
     BooleanExpression,
 )
 
 
-def resolve_selected_field(Model: SAModelOrAlias, field: SelectedField, *, where: str) -> InstrumentedAttribute:
+# region Resolve operations' inputs
+
+@singledispatch
+def resolve_input(_, Model: SAModelOrAlias, *, where: str):
+    raise NotImplementedError(_)
+
+
+@resolve_input.register
+def resolve_query_object(query: QueryObject, Model: SAModelOrAlias):
+    resolve_select(query.select, Model, where='select')
+    resolve_sort(query.sort, Model, where='sort')
+    resolve_filter(query.filter, Model, where='filter')
+
+
+@resolve_input.register
+def resolve_select(select: Select, Model: SAModelOrAlias, *, where: str):
+    for field in select.fields.values():
+        resolve_selected_field(field, Model, where=where)
+
+    for relation in select.relations.values():
+        resolve_selected_relation(relation, Model, where=where)
+
+
+@resolve_input.register
+def resolve_sort(sort: Sort, Model: SAModelOrAlias, *, where: str):
+    for field in sort.fields:
+        resolve_sorting_field(field, Model, where=where)
+
+
+@resolve_input.register
+def resolve_filter(filter: Filter, Model: SAModelOrAlias, *, where: str):
+    for condition in filter.conditions:
+        resolve_input_element(condition, Model, where=where)
+
+# endregion
+
+# region Resolve individual elements
+
+@singledispatch
+def resolve_input_element(_, Model: SAModelOrAlias, *, where: str):
+    raise NotImplementedError(_)
+
+
+@resolve_input_element.register
+def resolve_selected_field(field: SelectedField, Model: SAModelOrAlias, *, where: str) -> InstrumentedAttribute:
     attribute = resolve_column_by_name(Model, field.name, where=where)
 
     # Populate the missing fields
@@ -42,7 +85,8 @@ def resolve_selected_field(Model: SAModelOrAlias, field: SelectedField, *, where
     return attribute
 
 
-def resolve_sorting_field(Model: SAModelOrAlias, field: SortingField, *, where: str) -> InstrumentedAttribute:
+@resolve_input_element.register
+def resolve_sorting_field(field: SortingField, Model: SAModelOrAlias, *, where: str) -> InstrumentedAttribute:
     attribute = resolve_column_by_name(Model, field.name, where=where)
 
     # Populate the missing fields
@@ -51,16 +95,16 @@ def resolve_sorting_field(Model: SAModelOrAlias, field: SortingField, *, where: 
     return attribute
 
 
-def resolve_sorting_field_with_direction(Model: SAModelOrAlias, field: SortingField, *, where: str) -> sa.sql.ColumnElement:
-    attribute = resolve_sorting_field(Model, field, where=where)
+def resolve_sorting_field_with_direction(field: SortingField, Model: SAModelOrAlias, *, where: str) -> sa.sql.ColumnElement:
+    attribute = resolve_sorting_field(field, Model, where=where)
 
     if field.direction == SortingDirection.DESC:
         return attribute.desc()
     else:
         return attribute.asc()
 
-
-def resolve_selected_relation(Model: SAModelOrAlias, field: SelectedRelation, *, where: str) -> InstrumentedAttribute:
+@resolve_input_element.register
+def resolve_selected_relation(field: SelectedRelation, Model: SAModelOrAlias, *, where: str) -> InstrumentedAttribute:
     attribute = resolve_relation_by_name(Model, field.name, where=where)
 
     # Populate the missing fields
@@ -70,17 +114,14 @@ def resolve_selected_relation(Model: SAModelOrAlias, field: SelectedRelation, *,
     return attribute
 
 
-def resolve_filtering_expression(Model: SAModelOrAlias, expression: FilterExpressionBase, *, where: str) -> None:
-    if isinstance(expression, FieldExpression):
-        resolve_filtering_field_expression(Model, expression, where=where)
-    elif isinstance(expression, BooleanExpression):
-        for clause in expression.clauses:
-            resolve_filtering_expression(Model, clause, where=where)
-    else:
-        raise NotImplementedError(repr(expression))
+@resolve_input_element.register
+def resolve_filtering_boolean_expression(expression: BooleanExpression, Model: SAModelOrAlias, *, where: str) -> InstrumentedAttribute:
+    for clause in expression.clauses:
+        resolve_input_element(clause, Model, where=where)
 
 
-def resolve_filtering_field_expression(Model: SAModelOrAlias, expression: FieldExpression, *, where: str) -> InstrumentedAttribute:
+@resolve_input_element.register
+def resolve_filtering_field_expression(expression: FieldExpression, Model: SAModelOrAlias, *, where: str) -> InstrumentedAttribute:
     attribute = resolve_column_by_name(Model, expression.field, where=where)
 
     # Populate the missing fields
@@ -89,3 +130,5 @@ def resolve_filtering_field_expression(Model: SAModelOrAlias, expression: FieldE
     expression.is_json = is_json(attribute)
 
     return attribute
+
+# endregion

@@ -14,9 +14,6 @@ from .skip import Skip
 from .limit import Limit
 
 from .resolve import (
-    resolve_selected_field,
-    resolve_selected_relation,
-    resolve_filtering_expression,
-    resolve_sorting_field,
-    resolve_sorting_field_with_direction,
+    resolve_input,
+    resolve_input_element,
 )

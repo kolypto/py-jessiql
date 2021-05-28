@@ -20,6 +20,8 @@ from .loader import QueryLoaderBase, PrimaryQueryLoader, RelatedQueryLoader
 #   (User,)
 #   (User, 'articles', Article)
 #   (User, 'articles', Article, 'comments', Comment)
+from ..query_object.resolve import resolve_query_object
+
 LoadPath = tuple[Union[type, SAAttribute]]
 
 
@@ -48,6 +50,9 @@ class QueryExecutor:
 
         self.customize_statements = []
         self.customize_results = []
+
+        # Resolve every input
+        resolve_query_object(self.query, self.target_Model)
 
         # Init operations
         self.select_op = self.SelectOperation(query, target_Model)
