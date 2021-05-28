@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-import sqlalchemy as sa
+from functools import cache
 
 from sqlalchemy.orm import (  # type: ignore[attr-defined]  # sqlalchemy stubs not updated
     InstrumentedAttribute,
@@ -34,6 +34,7 @@ def resolve_relation_by_name(field_name: str, Model: SAModelOrAlias, *, where: s
 
 # region: Relation types
 
+@cache
 def is_relation(attr: SAAttribute):
     return (
         is_relation_relationship(attr) or
@@ -41,6 +42,7 @@ def is_relation(attr: SAAttribute):
     )
 
 
+@cache
 def is_relation_relationship(attribute: SAAttribute):
     return (
         isinstance(attribute, InstrumentedAttribute) and
@@ -49,6 +51,7 @@ def is_relation_relationship(attribute: SAAttribute):
     )
 
 
+@cache
 def is_relation_dynamic_loader(attribute: SAAttribute):
     return (
         isinstance(attribute, InstrumentedAttribute) and
@@ -60,10 +63,12 @@ def is_relation_dynamic_loader(attribute: SAAttribute):
 
 # region Relation info
 
+@cache
 def is_array(attribute: SAAttribute) -> bool:
     return attribute.property.uselist
 
 
+@cache
 def target_model(attribute: SAAttribute) -> type:
     return attribute.property.mapper.class_
 

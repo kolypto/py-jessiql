@@ -1,3 +1,5 @@
+from functools import cache
+
 import sqlalchemy as sa
 from typing import Union
 
@@ -11,6 +13,7 @@ def model_name(Model: SAModelOrAlias) -> str:
     return unaliased_class(Model).__name__
 
 
+@cache
 def field_name(field: Union[str, SAAttribute]) -> str:
     """ Get the name of the field """
     # Get the name

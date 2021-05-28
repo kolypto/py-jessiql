@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from functools import cache
+
 import sqlalchemy as sa
 from sqlalchemy import TypeDecorator
 from sqlalchemy.sql.elements import Label
@@ -37,6 +39,7 @@ def resolve_column_by_name(field_name: str, Model: SAModelOrAlias, *, where: str
 
 # region: Column types
 
+@cache
 def is_column(attribute: SAAttribute):
     return (
         is_column_property(attribute) or
@@ -45,6 +48,7 @@ def is_column(attribute: SAAttribute):
     )
 
 
+@cache
 def is_column_property(attribute: SAAttribute):
     return (
         isinstance(attribute, (InstrumentedAttribute, MapperProperty)) and
@@ -53,6 +57,7 @@ def is_column_property(attribute: SAAttribute):
     )
 
 
+@cache
 def is_column_expression(attribute: SAAttribute):
     return (
         isinstance(attribute, (InstrumentedAttribute, MapperProperty)) and
@@ -60,6 +65,7 @@ def is_column_expression(attribute: SAAttribute):
     )
 
 
+@cache
 def is_composite_property(attribute: SAAttribute):
     return (
         isinstance(attribute, QueryableAttribute) and
@@ -71,6 +77,7 @@ def is_composite_property(attribute: SAAttribute):
 
 # region Column info
 
+@cache
 def get_column_type(attribute: SAAttribute) -> sa.types.TypeEngine:
     """ Get column's SQL type """
     if isinstance(attribute.type, TypeDecorator):
@@ -80,11 +87,13 @@ def get_column_type(attribute: SAAttribute) -> sa.types.TypeEngine:
         return attribute.type
 
 
+@cache
 def is_array(attribute: SAAttribute) -> bool:
     """ Is the attribute a PostgreSql ARRAY column? """
     return isinstance(get_column_type(attribute), sa.ARRAY)
 
 
+@cache
 def is_json(attribute: SAAttribute) -> bool:
     """ Is the attribute a PostgreSql JSON column? """
     return isinstance(get_column_type(attribute), sa.JSON)

@@ -82,8 +82,6 @@ def test_joins_many_levels(connection: sa.engine.Connection):
         __import__('pprint').pprint(users)
 
 
-    __import__('pytest').fail(pytrace=False)
-
 
 Base = sa.orm.declarative_base()
 
