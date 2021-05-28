@@ -4,7 +4,7 @@ import sqlalchemy as sa
 
 from .base import Operation
 from jessiql.sainfo.columns import resolve_column_by_name
-from jessiql.query_object import Sort, SortingDirection
+from jessiql.query_object import SortQuery, SortingDirection
 from jessiql.typing import SAModelOrAlias
 
 
@@ -19,7 +19,7 @@ class SortOperation(Operation):
         return stmt
 
 
-def get_sort_fields_with_direction(sort: Sort, Model: SAModelOrAlias, *, where: str) -> abc.Iterator[sa.sql.ColumnElement]:
+def get_sort_fields_with_direction(sort: SortQuery, Model: SAModelOrAlias, *, where: str) -> abc.Iterator[sa.sql.ColumnElement]:
     for field in sort.fields:
         attribute = resolve_column_by_name(field.name, Model, where=where)
 

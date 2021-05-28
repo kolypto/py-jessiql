@@ -11,7 +11,7 @@ from .base import OperationInputBase
 
 
 @dataclass
-class Skip(OperationInputBase):
+class SkipQuery(OperationInputBase):
     skip: Optional[int]
 
     @classmethod

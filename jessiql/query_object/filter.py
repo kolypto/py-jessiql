@@ -16,7 +16,7 @@ from .base import OperationInputBase
 
 
 @dataclass
-class Filter(OperationInputBase):
+class FilterQuery(OperationInputBase):
     conditions: list[FilterExpressionBase]
 
     @classmethod

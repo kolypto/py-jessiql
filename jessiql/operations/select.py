@@ -2,7 +2,7 @@ from collections import abc
 
 import sqlalchemy as sa
 
-from jessiql.query_object import QueryObject, Select
+from jessiql.query_object import QueryObject, SelectQuery
 from jessiql.sainfo.columns import resolve_column_by_name
 from jessiql.sautil.adapt import LeftRelationshipColumnsAdapter
 from jessiql.typing import SAModelOrAlias
@@ -30,7 +30,7 @@ class SelectOperation:
         return stmt
 
 
-def select_fields(select: Select, Model: SAModelOrAlias, *, where: str) -> abc.Iterator[sa.sql.ColumnElement]:
+def select_fields(select: SelectQuery, Model: SAModelOrAlias, *, where: str) -> abc.Iterator[sa.sql.ColumnElement]:
     for field in select.fields.values():
         yield resolve_column_by_name(field.name, Model, where=where)
 

@@ -9,31 +9,31 @@ from typing import Optional, Union, TypedDict
 
 @dataclass
 class QueryObject:
-    select: Select
-    filter: Filter
-    sort: Sort
-    skip: Skip
-    limit: Limit
+    select: SelectQuery
+    filter: FilterQuery
+    sort: SortQuery
+    skip: SkipQuery
+    limit: LimitQuery
 
     __slots__ = 'select', 'filter', 'sort', 'skip', 'limit'
 
     @classmethod
     def from_query_object(cls, query_object: QueryObjectDict):
         return QueryObject(
-            select=Select.from_query_object(
+            select=SelectQuery.from_query_object(
                 select=query_object.get('select') or [],
                 join=query_object.get('join') or {},
             ),
-            filter=Filter.from_query_object(
+            filter=FilterQuery.from_query_object(
                 filter=query_object.get('filter') or {},
             ),
-            sort=Sort.from_query_object(
+            sort=SortQuery.from_query_object(
                 sort=query_object.get('sort') or [],
             ),
-            skip=Skip.from_query_object(
+            skip=SkipQuery.from_query_object(
                 skip=query_object.get('skip'),
             ),
-            limit=Limit.from_query_object(
+            limit=LimitQuery.from_query_object(
                 limit=query_object.get('limit'),
             ),
         )
@@ -49,8 +49,8 @@ class QueryObjectDict(TypedDict):
 
 
 # Import structures for individual fields
-from .select import Select
-from .filter import Filter
-from .sort import Sort
-from .skip import Skip
-from .limit import Limit
+from .select import SelectQuery
+from .filter import FilterQuery
+from .sort import SortQuery
+from .skip import SkipQuery
+from .limit import LimitQuery

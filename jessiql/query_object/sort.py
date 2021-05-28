@@ -20,7 +20,7 @@ from .base import OperationInputBase
 
 
 @dataclass
-class Sort(OperationInputBase):
+class SortQuery(OperationInputBase):
     fields: list[SortingField]
 
     @cached_property

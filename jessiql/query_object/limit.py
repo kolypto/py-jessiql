@@ -11,7 +11,7 @@ from .base import OperationInputBase
 
 
 @dataclass
-class Limit(OperationInputBase):
+class LimitQuery(OperationInputBase):
     limit: Optional[int]
 
     @classmethod

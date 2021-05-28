@@ -20,7 +20,7 @@ from .base import OperationInputBase
 
 
 @dataclass
-class Select(OperationInputBase):
+class SelectQuery(OperationInputBase):
     fields: dict[str, SelectedField]
     relations: dict[str, SelectedRelation]
 

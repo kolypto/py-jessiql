@@ -18,12 +18,12 @@ from jessiql.typing import SAModelOrAlias
 
 from . import (
     QueryObject,
-    Select,
+    SelectQuery,
     SelectedField,
     SelectedRelation,
-    Sort,
+    SortQuery,
     SortingField,
-    Filter,
+    FilterQuery,
     FieldFilterExpression,
     BooleanFilterExpression,
 )
@@ -44,7 +44,7 @@ def resolve_query_object(query: QueryObject, Model: SAModelOrAlias):
 
 
 @resolve_input.register
-def resolve_select(select: Select, Model: SAModelOrAlias, *, where: str):
+def resolve_select(select: SelectQuery, Model: SAModelOrAlias, *, where: str):
     for field in select.fields.values():
         resolve_selected_field(field, Model, where=where)
 
@@ -53,13 +53,13 @@ def resolve_select(select: Select, Model: SAModelOrAlias, *, where: str):
 
 
 @resolve_input.register
-def resolve_sort(sort: Sort, Model: SAModelOrAlias, *, where: str):
+def resolve_sort(sort: SortQuery, Model: SAModelOrAlias, *, where: str):
     for field in sort.fields:
         resolve_sorting_field(field, Model, where=where)
 
 
 @resolve_input.register
-def resolve_filter(filter: Filter, Model: SAModelOrAlias, *, where: str):
+def resolve_filter(filter: FilterQuery, Model: SAModelOrAlias, *, where: str):
     for condition in filter.conditions:
         resolve_input_element(condition, Model, where=where)
 
