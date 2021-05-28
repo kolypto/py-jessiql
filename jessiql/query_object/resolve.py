@@ -24,8 +24,8 @@ from . import (
     Sort,
     SortingField,
     Filter,
-    FieldExpression,
-    BooleanExpression,
+    FieldFilterExpression,
+    BooleanFilterExpression,
 )
 
 
@@ -100,13 +100,13 @@ def resolve_selected_relation(field: SelectedRelation, Model: SAModelOrAlias, *,
 
 
 @resolve_input_element.register
-def resolve_filtering_boolean_expression(expression: BooleanExpression, Model: SAModelOrAlias, *, where: str):
+def resolve_filtering_boolean_expression(expression: BooleanFilterExpression, Model: SAModelOrAlias, *, where: str):
     for clause in expression.clauses:
         resolve_input_element(clause, Model, where=where)
 
 
 @resolve_input_element.register
-def resolve_filtering_field_expression(expression: FieldExpression, Model: SAModelOrAlias, *, where: str):
+def resolve_filtering_field_expression(expression: FieldFilterExpression, Model: SAModelOrAlias, *, where: str):
     attribute = resolve_column_by_name(expression.field, Model, where=where)
 
     # Populate the missing fields

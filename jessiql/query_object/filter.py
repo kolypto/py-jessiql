@@ -41,10 +41,10 @@ class Filter(OperationInputBase):
     @classmethod
     def _parse_input_field_expressions(cls, field_name: str, value: Union[dict[str, Any], Any]):
         if not isinstance(value, dict):
-            yield FieldExpression(field=field_name, operator='$eq', value=value)
+            yield FieldFilterExpression(field=field_name, operator='$eq', value=value)
         else:
             for operator, operand in value.items():
-                yield FieldExpression(field=field_name, operator=operator, value=operand)
+                yield FieldFilterExpression(field=field_name, operator=operator, value=operand)
 
     @classmethod
     def _parse_input_boolean_expression(cls, operator: str, conditions: Union[dict, list[dict]]):
@@ -61,7 +61,7 @@ class Filter(OperationInputBase):
                 raise exc.QueryObjectError(f"{operator}'s operand must be an array")
 
         # Construct
-        return BooleanExpression(
+        return BooleanFilterExpression(
             operator=operator,
             clauses=list(itertools.chain.from_iterable(
                 cls.parse_input_fields(condition)
@@ -76,7 +76,7 @@ class FilterExpressionBase:
 
 @dataclass_notset('property', 'is_array', 'is_json')
 @dataclass
-class FieldExpression(FilterExpressionBase):
+class FieldFilterExpression(FilterExpressionBase):
     field: str
     operator: str
     value: Any
@@ -90,7 +90,7 @@ class FieldExpression(FilterExpressionBase):
 
 
 @dataclass
-class BooleanExpression(FilterExpressionBase):
+class BooleanFilterExpression(FilterExpressionBase):
     operator: str
     clauses: list[FilterExpressionBase]
 

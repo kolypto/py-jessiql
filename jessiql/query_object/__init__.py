@@ -9,7 +9,7 @@ from .query_object import QueryObject, QueryObjectDict
 from .base import OperationInputBase
 from .select import Select, SelectedField, SelectedRelation
 from .sort import Sort, SortingField, SortingDirection
-from .filter import Filter, FilterExpressionBase, FieldExpression, BooleanExpression
+from .filter import Filter, FilterExpressionBase, FieldFilterExpression, BooleanFilterExpression
 from .skip import Skip
 from .limit import Limit
 

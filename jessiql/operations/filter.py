@@ -9,7 +9,7 @@ import sqlalchemy.dialects.postgresql as pg  # TODO: FIXME: hardcoded dependency
 
 from .base import Operation
 
-from jessiql.query_object.filter import FilterExpressionBase, FieldExpression, BooleanExpression
+from jessiql.query_object.filter import FilterExpressionBase, FieldFilterExpression, BooleanFilterExpression
 from jessiql import exc
 from ..sainfo.columns import resolve_column_by_name
 from ..typing import SAModelOrAlias
@@ -26,14 +26,14 @@ class FilterOperation(Operation):
         return stmt
 
     def _compile_condition(self, condition: FilterExpressionBase) -> sa.sql.ColumnElement:
-        if isinstance(condition, FieldExpression):
+        if isinstance(condition, FieldFilterExpression):
             return self._compile_field_condition(condition)
-        elif isinstance(condition, BooleanExpression):
+        elif isinstance(condition, BooleanFilterExpression):
             return self._compile_boolean_conditions(condition)
         else:
             raise NotImplementedError(repr(condition))
 
-    def _compile_field_condition(self, condition: FieldExpression) -> sa.sql.ColumnElement:
+    def _compile_field_condition(self, condition: FieldFilterExpression) -> sa.sql.ColumnElement:
         # Resolve column
         condition.property = get_field_for_filtering(condition, self.target_Model, where='filter')
         col, val = condition.property, condition.value
@@ -59,7 +59,7 @@ class FilterOperation(Operation):
             val,  # value expression
         )
 
-    def _compile_boolean_conditions(self, condition: BooleanExpression) -> sa.sql.ColumnElement:
+    def _compile_boolean_conditions(self, condition: BooleanFilterExpression) -> sa.sql.ColumnElement:
         # "$not" is special
         if condition.operator == '$not':
             criterion = sql_anded_together([
@@ -92,7 +92,7 @@ class FilterOperation(Operation):
             # Done
             return cc
 
-    def use_operator(self, condition: FieldExpression, column_expression: sa.sql.ColumnElement, value: sa.sql.ColumnElement) -> sa.sql.ColumnElement:
+    def use_operator(self, condition: FieldFilterExpression, column_expression: sa.sql.ColumnElement, value: sa.sql.ColumnElement) -> sa.sql.ColumnElement:
         self._validate_operator_argument(condition)
         operator_lambda = self._get_operator_lambda(condition.operator, use_array=condition.is_array)
 
@@ -111,7 +111,7 @@ class FilterOperation(Operation):
         except KeyError:
             raise exc.QueryObjectError(f'Unsupported operator: {operator}')
 
-    def _validate_operator_argument(self, condition: FieldExpression):
+    def _validate_operator_argument(self, condition: FieldFilterExpression):
         operator = condition.operator
 
         # See if this operator requires array argument
@@ -191,7 +191,7 @@ class FilterOperation(Operation):
     # endregion
 
 
-def get_field_for_filtering(condition: FieldExpression, Model: SAModelOrAlias, *, where: str):
+def get_field_for_filtering(condition: FieldFilterExpression, Model: SAModelOrAlias, *, where: str):
     return resolve_column_by_name(condition.field, Model, where=where)
 
 

@@ -1,7 +1,6 @@
 import sqlalchemy as sa
 
 from jessiql.engine import JessiQL
-from jessiql.query_object import QueryObject
 from jessiql.testing.recreate_tables import created_tables
 
 
