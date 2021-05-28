@@ -51,14 +51,14 @@ class QueryExecutor:
         self.customize_statements = []
         self.customize_results = []
 
-        # Resolve every input
-        resolve_query_object(self.query, self.target_Model)
-
         # Init operations
         self.select_op = self.SelectOperation(query, target_Model)
         self.filter_op = self.FilterOperation(query, target_Model)
         self.sort_op = self.SortOperation(query, target_Model)
         self.skiplimit_op = self.SkipLimitOperation(query, target_Model)
+
+        # Resolve every input
+        resolve_query_object(self.query, self.target_Model)
 
         # Init loader
         self.loader = self.PrimaryQueryLoader()

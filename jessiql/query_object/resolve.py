@@ -23,7 +23,6 @@ from . import (
     SelectedRelation,
     Sort,
     SortingField,
-    SortingDirection,
     Filter,
     FieldExpression,
     BooleanExpression,
@@ -74,61 +73,45 @@ def resolve_input_element(_, Model: SAModelOrAlias, *, where: str):
 
 
 @resolve_input_element.register
-def resolve_selected_field(field: SelectedField, Model: SAModelOrAlias, *, where: str) -> InstrumentedAttribute:
-    attribute = resolve_column_by_name(Model, field.name, where=where)
+def resolve_selected_field(field: SelectedField, Model: SAModelOrAlias, *, where: str):
+    attribute = resolve_column_by_name(field.name, Model, where=where)
 
     # Populate the missing fields
     field.property = attribute.property
     field.is_array = is_array(attribute)
     field.is_json = is_json(attribute)
 
-    return attribute
-
 
 @resolve_input_element.register
-def resolve_sorting_field(field: SortingField, Model: SAModelOrAlias, *, where: str) -> InstrumentedAttribute:
-    attribute = resolve_column_by_name(Model, field.name, where=where)
+def resolve_sorting_field(field: SortingField, Model: SAModelOrAlias, *, where: str):
+    attribute = resolve_column_by_name(field.name, Model, where=where)
 
     # Populate the missing fields
     field.property = attribute.property
 
-    return attribute
-
-
-def resolve_sorting_field_with_direction(field: SortingField, Model: SAModelOrAlias, *, where: str) -> sa.sql.ColumnElement:
-    attribute = resolve_sorting_field(field, Model, where=where)
-
-    if field.direction == SortingDirection.DESC:
-        return attribute.desc()
-    else:
-        return attribute.asc()
 
 @resolve_input_element.register
-def resolve_selected_relation(field: SelectedRelation, Model: SAModelOrAlias, *, where: str) -> InstrumentedAttribute:
-    attribute = resolve_relation_by_name(Model, field.name, where=where)
+def resolve_selected_relation(field: SelectedRelation, Model: SAModelOrAlias, *, where: str):
+    attribute = resolve_relation_by_name(field.name, Model, where=where)
 
     # Populate the missing fields
     field.property = attribute.property
     field.uselist = field.property.uselist
 
-    return attribute
-
 
 @resolve_input_element.register
-def resolve_filtering_boolean_expression(expression: BooleanExpression, Model: SAModelOrAlias, *, where: str) -> InstrumentedAttribute:
+def resolve_filtering_boolean_expression(expression: BooleanExpression, Model: SAModelOrAlias, *, where: str):
     for clause in expression.clauses:
         resolve_input_element(clause, Model, where=where)
 
 
 @resolve_input_element.register
-def resolve_filtering_field_expression(expression: FieldExpression, Model: SAModelOrAlias, *, where: str) -> InstrumentedAttribute:
-    attribute = resolve_column_by_name(Model, expression.field, where=where)
+def resolve_filtering_field_expression(expression: FieldExpression, Model: SAModelOrAlias, *, where: str):
+    attribute = resolve_column_by_name(expression.field, Model, where=where)
 
     # Populate the missing fields
     expression.property = attribute.property
     expression.is_array = is_array(attribute)
     expression.is_json = is_json(attribute)
-
-    return attribute
 
 # endregion

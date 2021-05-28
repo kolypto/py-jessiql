@@ -1,22 +1,29 @@
+from collections import abc
+
 import sqlalchemy as sa
 
-from jessiql.query_object.resolve import resolve_sorting_field_with_direction
-
 from .base import Operation
+from jessiql.sainfo.columns import resolve_column_by_name
+from jessiql.query_object import Sort, SortingDirection
+from jessiql.typing import SAModelOrAlias
 
 
 class SortOperation(Operation):
     def apply_to_statement(self, stmt: sa.sql.Select) -> sa.sql.Select:
         # Sort fields
         stmt = stmt.order_by(
-            *self.compile_columns()
+            *get_sort_fields_with_direction(self.query.sort, self.target_Model, where='sort')
         )
 
         # Done
         return stmt
 
-    def compile_columns(self) -> list[sa.sql.ColumnElement]:
-        return [
-            resolve_sorting_field_with_direction(field, self.target_Model, where='sort')
-            for field in self.query.sort.fields
-        ]
+
+def get_sort_fields_with_direction(sort: Sort, Model: SAModelOrAlias, *, where: str) -> abc.Iterator[sa.sql.ColumnElement]:
+    for field in sort.fields:
+        attribute = resolve_column_by_name(field.name, Model, where=where)
+
+        if field.direction == SortingDirection.DESC:
+            yield attribute.desc()
+        else:
+            yield attribute.asc()

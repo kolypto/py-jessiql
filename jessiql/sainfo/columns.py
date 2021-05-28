@@ -19,7 +19,7 @@ from jessiql.typing import SAModelOrAlias, SAAttribute
 from jessiql import exc
 
 
-def resolve_column_by_name(Model: SAModelOrAlias, field_name: str, *, where: str) -> InstrumentedAttribute:
+def resolve_column_by_name(field_name: str, Model: SAModelOrAlias, *, where: str) -> InstrumentedAttribute:
     # As simple as it looks, this code invokes __getattr__() on sa.orm.AliasedClass which adapts the SQL expression
     # to make sure it uses the proper aliased name in queries
     try:

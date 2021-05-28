@@ -18,7 +18,7 @@ from jessiql.typing import SAModelOrAlias, SAAttribute
 from jessiql import exc
 
 
-def resolve_relation_by_name(Model: SAModelOrAlias, field_name: str, *, where: str) -> InstrumentedAttribute:
+def resolve_relation_by_name(field_name: str, Model: SAModelOrAlias, *, where: str) -> InstrumentedAttribute:
     try:
         attribute = getattr(Model, field_name)
     except AttributeError as e:

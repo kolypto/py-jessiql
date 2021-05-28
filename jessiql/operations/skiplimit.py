@@ -4,7 +4,7 @@ from jessiql.sautil.adapt import SimpleColumnsAdapter
 from jessiql.typing import SAAttribute
 
 from .base import Operation
-from .sort import SortOperation
+from .sort import get_sort_fields_with_direction
 
 
 class SkipLimitOperation(Operation):
@@ -71,7 +71,7 @@ class SkipLimitOperation(Operation):
                 # We have to apply the same ordering from the outside query;
                 # otherwise, the numbering will be undetermined
                 order_by=adapter.replace_many(
-                    SortOperation(self.query, self.target_Model).compile_columns()
+                    get_sort_fields_with_direction(self.query.sort, self.target_Model, where='limit')
                 )
             )
             # give it a name that we can use later

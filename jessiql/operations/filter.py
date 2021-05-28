@@ -10,8 +10,9 @@ import sqlalchemy.dialects.postgresql as pg  # TODO: FIXME: hardcoded dependency
 from .base import Operation
 
 from jessiql.query_object.filter import FilterExpressionBase, FieldExpression, BooleanExpression
-from jessiql.query_object.resolve import resolve_filtering_field_expression, resolve_filtering_boolean_expression
 from jessiql import exc
+from ..sainfo.columns import resolve_column_by_name
+from ..typing import SAModelOrAlias
 
 
 class FilterOperation(Operation):
@@ -34,7 +35,7 @@ class FilterOperation(Operation):
 
     def _compile_field_condition(self, condition: FieldExpression) -> sa.sql.ColumnElement:
         # Resolve column
-        condition.property = resolve_filtering_field_expression(condition, self.target_Model, where='filter')
+        condition.property = get_field_for_filtering(condition, self.target_Model, where='filter')
         col, val = condition.property, condition.value
 
         # Case 1. Both column and value are arrays
@@ -188,6 +189,10 @@ class FilterOperation(Operation):
         cls.ARRAY_OPERATORS[name] = callable
 
     # endregion
+
+
+def get_field_for_filtering(condition: FieldExpression, Model: SAModelOrAlias, *, where: str):
+    return resolve_column_by_name(condition.field, Model, where=where)
 
 
 def _is_array(value):
