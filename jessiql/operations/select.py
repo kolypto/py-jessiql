@@ -14,20 +14,27 @@ class SelectOperation:
         self.target_Model = target_Model
 
     def apply_to_statement(self, stmt: sa.sql.Select) -> sa.sql.Select:
-        # Select columns from query.select
-        # These are the columns that the user has requested
-        stmt = stmt.add_columns(
-            *select_fields(self.query.select, self.target_Model, where='select')
-        )
+        # Query columns
+        selected_columns = list(self.compile_columns())
+        stmt = stmt.add_columns(*selected_columns)
 
-        # Add columns that relationships want using query.select
-        # Note: duplicate columns will be removed automatically by the select() method
-        stmt = stmt.add_columns(
-            *select_local_columns_for_relations(self.query, self.target_Model, where='select')
-        )
+        # If no columns were selected, use the primary key
+        if len(selected_columns) == 0:
+            stmt = stmt.add_columns(
+                *self.target_Model.__mapper__.primary_key
+            )
 
         # Done
         return stmt
+
+    def compile_columns(self) -> abc.Iterator[sa.sql.ColumnElement]:
+        # Select columns from query.select
+        # These are the columns that the user has requested
+        yield from select_fields(self.query.select, self.target_Model, where='select')
+
+        # Add columns that relationships want using query.select
+        # Note: duplicate columns will be removed automatically by the select() method
+        yield from select_local_columns_for_relations(self.query, self.target_Model, where='select')
 
 
 def select_fields(select: SelectQuery, Model: SAModelOrAlias, *, where: str) -> abc.Iterator[sa.sql.ColumnElement]:

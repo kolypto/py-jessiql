@@ -3,13 +3,13 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from collections import abc
 from enum import Enum
 
 from functools import cached_property
 from typing import Union
 
 import sqlalchemy as sa
-import sqlalchemy.orm
 
 from jessiql import exc
 from jessiql.sainfo.names import field_name

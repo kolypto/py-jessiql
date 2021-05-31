@@ -40,7 +40,7 @@ class QueryExecutor:
     customize_results: list[CustomizeResultsCallable]
 
     loader: QueryLoaderBase
-    load_path: operations.LoadPath
+    load_path: LoadPath
     related_executors: dict[str, QueryExecutor] = None
 
     def __init__(self, query: QueryObject, target_Model: SAModelOrAlias):
@@ -114,10 +114,10 @@ class QueryExecutor:
             executor.fetchall(connection)
 
     def _load_results(self, connection: sa.engine.Connection) -> abc.Iterator[SARowDict]:
-        stmt = self._statement()
+        stmt = self.statement()
         yield from self.loader.load_results(stmt, connection)
 
-    def _statement(self) -> sa.sql.Select:
+    def statement(self) -> sa.sql.Select:
         stmt = sa.select([]).select_from(self.target_Model)
 
         stmt = self._apply_operations_to_statement(stmt)
