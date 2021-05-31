@@ -41,7 +41,7 @@ class SkipLimitOperation(Operation):
 
             SELECT *, row_number() OVER(PARTITION BY author_id) AS group_row_n
             FROM articles
-            WHERE group_row_name < 10
+            WHERE group_row_n < 10
 
             This will result in the following table:
 
