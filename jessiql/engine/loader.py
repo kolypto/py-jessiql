@@ -15,6 +15,9 @@ class QueryLoaderBase:
     def prepare_statement(self, stmt: sa.sql.Select) -> sa.sql.Select:
         return stmt
 
+    def for_states(self, source_states: list[SARowDict]):
+        pass
+
     def load_results(self, stmt: sa.sql.Select, connection: sa.engine.Connection) -> abc.Iterator[SARowDict]:
         raise NotImplementedError
 
@@ -31,9 +34,11 @@ class PrimaryQueryLoader(QueryLoaderBase):
 class RelatedQueryLoader(QueryLoaderBase):
     __slots__ = 'relation', 'loader'
 
-    def __init__(self, relation: SelectedRelation, source_Model: SAModelOrAlias, target_Model: SAModelOrAlias, source_states: list[SARowDict]):
+    def __init__(self, relation: SelectedRelation, source_Model: SAModelOrAlias, target_Model: SAModelOrAlias):
         self.relation = relation
         self.loader = JSelectInLoader(source_Model, self.relation.property, target_Model)
+
+    def for_states(self, source_states: list[SARowDict]):
         self.loader.prepare_states(source_states)
 
     def prepare_statement(self, stmt: sa.sql.Select) -> sa.sql.Select:

@@ -16,11 +16,11 @@ def stmt2sql(stmt: sa.sql.ClauseElement, dialect: sa.engine.interfaces.Dialect =
     return _insert_query_params(query.string, query.params)
 
 
-def assert_statement_lines(stmt: Union[str, sa.sql.ClauseElement], *expected_lines: str):
+def assert_statement_lines(stmt: Union[str, sa.sql.ClauseElement], *expected_lines: str, dialect: sa.engine.interfaces.Dialect = None):
     """ Find the provided lines inside a statement or fail """
     # Query?
     if isinstance(stmt, sa.sql.ClauseElement):
-        stmt = stmt2sql(stmt)
+        stmt = stmt2sql(stmt, dialect)
 
     # Test
     for line in expected_lines:
@@ -30,7 +30,7 @@ def assert_statement_lines(stmt: Union[str, sa.sql.ClauseElement], *expected_lin
     return stmt
 
 
-def selected_columns(stmt: str):
+def selected_columns(stmt_str: str):
     """ Get the set of column names from the SELECT clause
 
         Example:
@@ -38,7 +38,7 @@ def selected_columns(stmt: str):
         -> {'a', 'u.b', 'c', 'u.d'}
     """
     # Match
-    m = SELECTED_COLUMNS_REX.match(stmt)
+    m = SELECTED_COLUMNS_REX.match(stmt_str)
 
     # Results
     if not m:
