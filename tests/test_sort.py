@@ -59,9 +59,15 @@ def test_sort_results(connection: sa.engine.Connection, query_object: QueryObjec
 
 
 @pytest.mark.parametrize(('query_object', 'expected_query_lines', 'expected_results'), [
-    (dict(), [], []),
+    (dict(sort=['a-'], select=[{'articles': dict(sort=['a-'])}]), ['FROM u', 'ORDER BY u.a DESCZ', 'FROM a', 'ORDER BY a.a DESC'], [
+        {'id': 1, 'articles': [
+            {'id': 3, 'user_id': 1},
+            {'id': 2, 'user_id': 1},
+            {'id': 1, 'user_id': 1},
+        ]}
+    ]),
 ])
-def test_sort_sql(connection: sa.engine.Connection, query_object: QueryObjectDict, expected_query_lines: list[str], expected_results: list[dict]):
+def test_joined_sort(connection: sa.engine.Connection, query_object: QueryObjectDict, expected_query_lines: list[str], expected_results: list[dict]):
     # Models
     Base = sa.orm.declarative_base()
 
@@ -92,11 +98,11 @@ def test_sort_sql(connection: sa.engine.Connection, query_object: QueryObjectDic
         q = JessiQL(query_object, User)
 
         # SQL
-        statements = '\n'.join(map(stmt2sql, [
+        statements = '\n\n\n'.join(map(stmt2sql, [
             q.statement(),
-            # q.related_executors['article'].statement(),
+            *(executor.statement() for executor in q.related_executors.values())
         ]))
-        assert assert_statement_lines(q.statement(), *expected_query_lines)
+        assert assert_statement_lines(statements, *expected_query_lines)
 
         # Results
         results = q.fetchall(connection)
