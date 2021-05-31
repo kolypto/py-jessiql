@@ -122,11 +122,13 @@ class FilterOperation(Operation):
     # region Library
 
     # Operators for scalar (e.g. non-array) columns
+    # Mapping:
+    #   'operator-name': lambda column, value, original_value
+    #   `original_value` is to be used in conditions, because `val` can be an SQL-expression!
     SCALAR_OPERATORS = {
-        # operator => lambda column, value, original_value
-        # `original_value` is to be used in conditions, because `val` can be an SQL-expression!
         '$eq': lambda col, val, oval: col == val,
-        '$ne': lambda col, val, oval: col.is_distinct_from(val),  # (see comment below)
+        # "IS DISTINCT FROM" is a better rendering that considers NULLs properly
+        '$ne': lambda col, val, oval: col.is_distinct_from(val),
         '$lt': lambda col, val, oval: col < val,
         '$lte': lambda col, val, oval: col <= val,
         '$gt': lambda col, val, oval: col > val,
@@ -135,11 +137,6 @@ class FilterOperation(Operation):
         '$in': lambda col, val, oval: col.in_(val),  # field IN(values)
         '$nin': lambda col, val, oval: col.notin_(val),  # field NOT IN(values)
         '$exists': lambda col, val, oval: col != None if oval else col == None,
-
-        # Note on $ne:
-        # We can't actually use '!=' here, because with nullable columns, it will give unexpected results.
-        # {'name': {'$ne': 'brad'}} won't select a User(name=None),
-        # because in Postgres, a '!=' comparison with NULL is... NULL, which is a false value.
     }
 
     # Operators for array columns
@@ -153,10 +150,12 @@ class FilterOperation(Operation):
         # field && ARRAY[values]
         '$in': lambda col, val, oval: col.overlap(val),
         # NOT( field && ARRAY[values] )
+        # Implementation is Postgres-specific
         '$nin': lambda col, val, oval: ~ col.overlap(val),
         # is not NULL
         '$exists': lambda col, val, oval: col != None if oval else col == None,
         # contains all values
+        # Implementation is Postgres-specific
         '$all': lambda col, val, oval: col.contains(val),
         # value == 0: ARRAY_LENGTH(field, 1) IS NULL
         # value != 0: ARRAY_LENGTH(field, 1) == value

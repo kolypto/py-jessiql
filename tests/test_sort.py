@@ -30,11 +30,11 @@ def test_sort_sql(connection: sa.engine.Connection, query_object: QueryObjectDic
     assert assert_statement_lines(q.statement(), *expected_query_lines)
 
 
-@pytest.mark.parametrize(('query_object', 'expected_ids'), [
-    (dict(sort=['id+']), [1, 2, 3]),
-    (dict(sort=['id-']), [3, 2, 1]),
+@pytest.mark.parametrize(('query_object', 'expected_results'), [
+    (dict(sort=['id+']), [{'id': n} for n in (1, 2, 3)]),
+    (dict(sort=['id-']), [{'id': n} for n in (3, 2, 1)]),
 ])
-def test_sort_results(connection: sa.engine.Connection, query_object: QueryObjectDict, expected_ids: list[dict]):
+def test_sort_results(connection: sa.engine.Connection, query_object: QueryObjectDict, expected_results: list[dict]):
     # Models
     Base = sa.orm.declarative_base()
 
@@ -55,11 +55,11 @@ def test_sort_results(connection: sa.engine.Connection, query_object: QueryObjec
 
         # Results
         results = q.fetchall(connection)
-        assert [row['id'] for row in results] == expected_ids
+        assert results == expected_results
 
 
 @pytest.mark.parametrize(('query_object', 'expected_query_lines', 'expected_results'), [
-    (dict(sort=['a-'], select=[{'articles': dict(sort=['a-'])}]), ['FROM u', 'ORDER BY u.a DESCZ', 'FROM a', 'ORDER BY a.a DESC'], [
+    (dict(sort=['a-'], select=[{'articles': dict(sort=['a-'])}]), ['FROM u', 'ORDER BY u.a DESC', 'FROM a', 'ORDER BY a.a DESC'], [
         {'id': 1, 'articles': [
             {'id': 3, 'user_id': 1},
             {'id': 2, 'user_id': 1},

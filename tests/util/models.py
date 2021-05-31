@@ -19,9 +19,10 @@ def manyfields(prefix: str, n: int):
             id=1,
             **manyfields('user', 1),
         )
+        => User(id=1, a='user-1-a', b='user-1-b', c='user-1-c', d='user-1-d')
     """
     return {
-        k: f'{prefix}-{n}-a'
+        k: f'{prefix}-{n}-{k}'
         for k in 'abcd'
     }
 
@@ -36,6 +37,7 @@ def id_manyfields(prefix: str, id: int, **extra):
 
     Example:
         User(**id_manyfields('user', 1, email='kolypto@gmail.com'))
+        => User(id=1, a='user-1-a', b='user-1-b', c='user-1-c', d='user-1-d', email='kolypto@gmail.com')
     """
     return {
         'id': id,
