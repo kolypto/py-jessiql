@@ -98,10 +98,7 @@ def test_joined_sort(connection: sa.engine.Connection, query_object: QueryObject
         q = JessiQL(query_object, User)
 
         # SQL
-        statements = '\n\n\n'.join(map(stmt2sql, [
-            q.statement(),
-            *(executor.statement() for executor in q.related_executors.values())
-        ]))
+        statements = '\n\n\n'.join(map(stmt2sql, q.all_statements()))
         assert assert_statement_lines(statements, *expected_query_lines)
 
         # Results

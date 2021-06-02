@@ -128,6 +128,11 @@ class QueryExecutor:
 
         return stmt
 
+    def all_statements(self) -> abc.Iterator[sa.sql.Select]:
+        yield self.statement()
+        for executor in self.related_executors.values():
+            yield from executor.all_statements()
+
     def _apply_operations_to_statement(self, stmt: sa.sql.Select) -> sa.sql.Select:
         stmt = self.loader.prepare_statement(stmt)
 
