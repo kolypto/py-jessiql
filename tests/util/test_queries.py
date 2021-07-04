@@ -1,6 +1,6 @@
 import sqlalchemy as sa
 
-from jessiql.engine import JessiQL
+from jessiql.engine import Query
 from jessiql.query_object import QueryObjectDict
 
 from jessiql.testing.stmt_text import assert_statement_lines, stmt2sql
@@ -15,7 +15,7 @@ def typical_test_sql_query_text(query_object: QueryObjectDict, Model: type, expe
     * Check SQL
     """
     # Query
-    q = JessiQL(query_object, Model)
+    q = Query(query_object, Model)
 
     # SQL
     assert assert_statement_lines(q.statement(), *expected_query_lines)
@@ -31,7 +31,7 @@ def typical_test_query_results(connection: sa.engine.Connection, query_object: Q
     * Check fetched rows
     """
     # Query
-    q = JessiQL(query_object, Model)
+    q = Query(query_object, Model)
 
     # Results
     results = q.fetchall(connection)
@@ -41,7 +41,7 @@ def typical_test_query_results(connection: sa.engine.Connection, query_object: Q
 def typical_test_query_text_and_results(connection: sa.engine.Connection, query_object: QueryObjectDict, Model: type, expected_query_lines: list[str], expected_results: list[dict]):
     """ Typical test helper: check SQL, check fetched rows """
     # Query
-    q = JessiQL(query_object, Model)
+    q = Query(query_object, Model)
 
     # SQL
     statements = '\n\n\n'.join(map(stmt2sql, q.all_statements()))

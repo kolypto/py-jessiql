@@ -1,6 +1,6 @@
 import sqlalchemy as sa
 
-from jessiql.engine import JessiQL
+from jessiql.engine import Query
 from jessiql.testing.recreate_tables import created_tables
 
 
@@ -74,7 +74,7 @@ def test_joins_many_levels(connection: sa.engine.Connection):
         )
 
         # === Query User
-        qUser = JessiQL.prepare(User)
+        qUser = Query.prepare(User)
 
         q = qUser(query)
         users = q.fetchall(connection)

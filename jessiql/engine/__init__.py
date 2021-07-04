@@ -1,3 +1,3 @@
 """ Query execution """
 
-from .jessiql import JessiQL
+from .query import Query
