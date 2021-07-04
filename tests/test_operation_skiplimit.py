@@ -12,15 +12,16 @@ from .util.models import IdManyFieldsMixin, id_manyfields
 
 
 @pytest.mark.parametrize(('query_object', 'expected_query_lines',), [
-    # Empty
+    # Empty: feed `None`
     (dict(skip=None), []),
     (dict(limit=None), []),
-    # Values
+    # Values: skip 1, limit 1, skip 1 limit 1
     (dict(skip=1), ['LIMIT ALL OFFSET 1']),
     (dict(limit=1), ['LIMIT 1']),
     (dict(skip=1, limit=1), ['LIMIT 1 OFFSET 1']),
 ])
 def test_skiplimit_sql(connection: sa.engine.Connection, query_object: QueryObjectDict, expected_query_lines: list[str]):
+    """ Typical test: what SQL is generated """
     # Models
     Base = sa.orm.declarative_base()
 
@@ -38,12 +39,16 @@ def test_skiplimit_sql(connection: sa.engine.Connection, query_object: QueryObje
 
 
 @pytest.mark.parametrize(('query_object', 'expected_results'), [
+    # Empty input
     (dict(), [{'id': n} for n in (1, 2, 3)]),
+    # skip 1, limit 1, skip 1 limit 1
+    # use `sort` to make sure the ordering is predictable
+    (dict(sort=['id'], skip=1), [{'id': n} for n in (2, 3,)]),
     (dict(sort=['id'], limit=1), [{'id': n} for n in (1,)]),
     (dict(sort=['id'], skip=1, limit=1), [{'id': n} for n in (2,)]),
-    (dict(sort=['id'], skip=1), [{'id': n} for n in (2, 3,)]),
 ])
 def test_skiplimit_results(connection: sa.engine.Connection, query_object: QueryObjectDict, expected_results: list[dict]):
+    """ Typical test: real data, real query, real results """
     # Models
     Base = sa.orm.declarative_base()
 

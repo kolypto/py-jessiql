@@ -17,6 +17,7 @@ from .util.models import IdManyFieldsMixin, id_manyfields
     (dict(sort=['a', 'b+', 'c-']), 'ORDER BY a.a ASC, a.b ASC, a.c DESC'),
 ])
 def test_sort_sql(connection: sa.engine.Connection, query_object: QueryObjectDict, expected_query_lines: list[str]):
+    """ Typical test: what SQL is generated """
     # Models
     Base = sa.orm.declarative_base()
 
@@ -31,10 +32,12 @@ def test_sort_sql(connection: sa.engine.Connection, query_object: QueryObjectDic
 
 
 @pytest.mark.parametrize(('query_object', 'expected_results'), [
+    # Test: sort ASC, DESC
     (dict(sort=['id+']), [{'id': n} for n in (1, 2, 3)]),
     (dict(sort=['id-']), [{'id': n} for n in (3, 2, 1)]),
 ])
 def test_sort_results(connection: sa.engine.Connection, query_object: QueryObjectDict, expected_results: list[dict]):
+    """ Typical test: real data, real query, real results """
     # Models
     Base = sa.orm.declarative_base()
 
@@ -59,7 +62,12 @@ def test_sort_results(connection: sa.engine.Connection, query_object: QueryObjec
 
 
 @pytest.mark.parametrize(('query_object', 'expected_query_lines', 'expected_results'), [
-    (dict(sort=['a-'], select=[{'articles': dict(sort=['a-'])}]), ['FROM u', 'ORDER BY u.a DESC', 'FROM a', 'ORDER BY a.a DESC'], [
+    (dict(sort=['a-'], select=[{'articles': dict(sort=['a-'])}]), [
+        'FROM u',
+        'ORDER BY u.a DESC',
+        'FROM a',
+        'ORDER BY a.a DESC'
+    ], [
         {'id': 1, 'articles': [
             {'id': 3, 'user_id': 1},
             {'id': 2, 'user_id': 1},

@@ -46,6 +46,7 @@ from .util.models import IdManyFieldsMixin, id_manyfields
     (dict(filter={'tags': {'$all': ['a', 'b', 'c']}}), ["WHERE a.tags @> CAST(ARRAY[a, b, c] AS VARCHAR[])"]),
 ])
 def test_filter_sql(connection: sa.engine.Connection, query_object: QueryObjectDict, expected_query_lines: list[str]):
+    """ Typical test: what SQL is generated """
     # Models
     Base = sa.orm.declarative_base()
 
@@ -63,11 +64,14 @@ def test_filter_sql(connection: sa.engine.Connection, query_object: QueryObjectD
 
 
 @pytest.mark.parametrize(('query_object', 'expected_results'), [
+    # Empty input
     (dict(), [{'id': n} for n in (1, 2, 3)]),
+    # Filter by column
     (dict(filter={'a': 'not-found'}), []),
     (dict(filter={'a': 'm-1-a'}), [{'id': 1}]),
 ])
 def test_filter_results(connection: sa.engine.Connection, query_object: QueryObjectDict, expected_results: list[dict]):
+    """ Typical test: real data, real query, real results """
     # Models
     Base = sa.orm.declarative_base()
 
@@ -92,7 +96,11 @@ def test_filter_results(connection: sa.engine.Connection, query_object: QueryObj
 
 
 @pytest.mark.parametrize(('query_object', 'expected_query_lines', 'expected_results'), [
-    (dict(select=[{'articles': dict(filter={'id': 3})}]), ['FROM u', 'FROM a', 'WHERE a.user_id IN ([POSTCOMPILE_primary_keys]) AND a.id = 3'], [
+    (dict(select=[{'articles': dict(filter={'id': 3})}]), [
+        'FROM u',
+        'FROM a',
+        'WHERE a.user_id IN ([POSTCOMPILE_primary_keys]) AND a.id = 3'
+    ], [
         {'id': 1, 'articles': [
             {'id': 3, 'user_id': 1},
             # no more rows

@@ -30,6 +30,7 @@ class PrimaryQueryLoader(QueryLoaderBase):
         res: sa.engine.CursorResult = connection.execute(stmt)
         # TODO: use fetchmany() or partitions()
         #   See how jessiql behaves with huge result sets. Make sure it's able to iterate, not load everything into memory.
+        #   See: https://docs.sqlalchemy.org/en/14/_modules/examples/performance/large_resultsets.html
         yield from (dict(row) for row in res.mappings())
 
 
