@@ -88,9 +88,11 @@ def test_filter_results(connection: sa.engine.Connection, query_object: QueryObj
 
 
 @pytest.mark.parametrize(('query_object', 'expected_query_lines', 'expected_results'), [
+    # Simple filter: column equality
     (dict(select=[{'articles': dict(filter={'id': 3})}]), [
         'FROM u',
         'FROM a',
+        # joined query includes: filter condition AND join condition
         'WHERE a.user_id IN ([POSTCOMPILE_primary_keys]) AND a.id = 3'
     ], [
         {'id': 1, 'articles': [

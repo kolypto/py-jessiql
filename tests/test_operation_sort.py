@@ -10,10 +10,13 @@ from .util.test_queries import typical_test_sql_query_text, typical_test_query_r
 
 
 @pytest.mark.parametrize(('query_object', 'expected_query_lines',), [
+    # Empty
     (dict(sort=None), ['SELECT a.id', 'FROM a']),
+    # Sort ASC, sort DESC
     (dict(sort=['a']), 'ORDER BY a.a ASC'),
     (dict(sort=['a+']), 'ORDER BY a.a ASC'),
     (dict(sort=['a-']), 'ORDER BY a.a DESC'),
+    # Sort: many fields
     (dict(sort=['a', 'b+', 'c-']), 'ORDER BY a.a ASC, a.b ASC, a.c DESC'),
 ])
 def test_sort_sql(connection: sa.engine.Connection, query_object: QueryObjectDict, expected_query_lines: list[str]):
@@ -55,6 +58,7 @@ def test_sort_results(connection: sa.engine.Connection, query_object: QueryObjec
 
 
 @pytest.mark.parametrize(('query_object', 'expected_query_lines', 'expected_results'), [
+    # Simple sort: column
     (dict(sort=['a-'], select=[{'articles': dict(sort=['a-'])}]), [
         'FROM u',
         'ORDER BY u.a DESC',

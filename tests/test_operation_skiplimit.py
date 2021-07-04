@@ -66,6 +66,7 @@ def test_skiplimit_results(connection: sa.engine.Connection, query_object: Query
 
 @pytest.mark.parametrize(('query_object', 'expected_query_lines', 'expected_results'), [
     (dict(select=[{'articles': dict(sort=['id'], limit=1)}]), [
+        # LIMIT through a window function
         'SELECT anon_1.user_id, anon_1.id',
         'FROM (',
             'SELECT a.user_id AS user_id, a.id AS id, row_number() OVER (PARTITION BY a.user_id ORDER BY a.id ASC NULLS LAST) AS __group_row_n',
@@ -80,14 +81,20 @@ def test_skiplimit_results(connection: sa.engine.Connection, query_object: Query
             # no more rows
         ]}
     ]),
-    (dict(select=[{'articles': dict(sort=['id'], skip=1, limit=1)}]), ['WHERE __group_row_n > 1 AND __group_row_n <= 2'], [
+    (dict(select=[{'articles': dict(sort=['id'], skip=1, limit=1)}]), [
+        # still a window function
+        'WHERE __group_row_n > 1 AND __group_row_n <= 2'
+    ], [
          {'id': 1, 'articles': [
              # first row skipped
              {'id': 2, 'user_id': 1},
              # no more rows
          ]}
      ]),
-    (dict(select=[{'articles': dict(sort=['id'], skip=1)}]), ['WHERE __group_row_n > 1'], [
+    (dict(select=[{'articles': dict(sort=['id'], skip=1)}]), [
+        # still a window function
+        'WHERE __group_row_n > 1'
+    ], [
         {'id': 1, 'articles': [
             # first row skipped
             {'id': 2, 'user_id': 1},
