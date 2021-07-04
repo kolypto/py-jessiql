@@ -2,7 +2,7 @@ import pytest
 import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql as pg
 
-from jessiql.query_object import QueryObjectDict
+from jessiql import QueryObjectDict
 from jessiql.testing.insert import insert
 from jessiql.testing.recreate_tables import created_tables
 
@@ -102,6 +102,7 @@ def test_filter_results(connection: sa.engine.Connection, query_object: QueryObj
     ]),
 ])
 def test_joined_filter(connection: sa.engine.Connection, query_object: QueryObjectDict, expected_query_lines: list[str], expected_results: list[dict]):
+    """ Typical test: JOINs, SQL and results """
     # Models
     Base = sa.orm.declarative_base()
 

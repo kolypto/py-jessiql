@@ -2,7 +2,7 @@ import pytest
 import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql as pg
 
-from jessiql.query_object import QueryObjectDict
+from jessiql import QueryObjectDict
 from jessiql.testing.insert import insert
 from jessiql.testing.recreate_tables import created_tables
 
@@ -103,6 +103,7 @@ def test_skiplimit_results(connection: sa.engine.Connection, query_object: Query
     ]),
 ])
 def test_joined_skiplimit(connection: sa.engine.Connection, query_object: QueryObjectDict, expected_query_lines: list[str], expected_results: list[dict]):
+    """ Typical test: JOINs, SQL and results """
     # Models
     Base = sa.orm.declarative_base()
 

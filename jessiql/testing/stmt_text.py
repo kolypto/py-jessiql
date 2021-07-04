@@ -2,7 +2,7 @@
 import re
 import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql
-from typing import Union
+
 
 # The dialect to use for compiling statements
 DEFAULT_DIALECT: sa.engine.interfaces.Dialect = postgresql.dialect()
@@ -14,20 +14,6 @@ def stmt2sql(stmt: sa.sql.ClauseElement, dialect: sa.engine.interfaces.Dialect =
     # This intentionally does not escape values!
     query = stmt.compile(dialect=dialect or DEFAULT_DIALECT)
     return _insert_query_params(query.string, query.params)
-
-
-def assert_statement_lines(stmt: Union[str, sa.sql.ClauseElement], *expected_lines: str, dialect: sa.engine.interfaces.Dialect = None):
-    """ Find the provided lines inside a statement or fail """
-    # Query?
-    if isinstance(stmt, sa.sql.ClauseElement):
-        stmt = stmt2sql(stmt, dialect)
-
-    # Test
-    for line in expected_lines:
-        assert line.strip() in stmt, f'{line!r} not found in {stmt!r}'
-
-    # Done
-    return stmt
 
 
 def selected_columns(stmt_str: str):

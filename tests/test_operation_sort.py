@@ -1,7 +1,7 @@
 import pytest
 import sqlalchemy as sa
 
-from jessiql.query_object import QueryObjectDict
+from jessiql import QueryObjectDict
 from jessiql.testing.insert import insert
 from jessiql.testing.recreate_tables import created_tables
 
@@ -73,6 +73,7 @@ def test_sort_results(connection: sa.engine.Connection, query_object: QueryObjec
     ]),
 ])
 def test_joined_sort(connection: sa.engine.Connection, query_object: QueryObjectDict, expected_query_lines: list[str], expected_results: list[dict]):
+    """ Typical test: JOINs, SQL and results """
     # Models
     Base = sa.orm.declarative_base()
 
