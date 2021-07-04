@@ -28,7 +28,9 @@ class PrimaryQueryLoader(QueryLoaderBase):
     def load_results(self, stmt: sa.sql.Select, connection: sa.engine.Connection) -> abc.Iterator[SARowDict]:
         # Get the result, convert list[RowMapping] into list[dict]
         res: sa.engine.CursorResult = connection.execute(stmt)
-        yield from (dict(row) for row in res.mappings())  # TODO: use fetchmany() or partitions()
+        # TODO: use fetchmany() or partitions()
+        #   See how jessiql behaves with huge result sets. Make sure it's able to iterate, not load everything into memory.
+        yield from (dict(row) for row in res.mappings())
 
 
 class RelatedQueryLoader(QueryLoaderBase):

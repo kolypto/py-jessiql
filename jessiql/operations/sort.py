@@ -9,6 +9,10 @@ from jessiql.typing import SAModelOrAlias
 
 
 # TODO: expose a control that lets the user choose between NULLS FIRST and NULLS LAST?
+#   It may be a 'column+' for default NULLS LAST, and 'column++' for NULLS FIRST?
+#   With Postgres:
+#   > By default, null values sort as if larger than any non-null value;
+#   > that is, NULLS FIRST is the default for DESC order, and NULLS LAST otherwise.
 
 
 class SortOperation(Operation):
