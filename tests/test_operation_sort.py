@@ -7,6 +7,7 @@ from jessiql.testing.insert import insert
 from jessiql.testing.recreate_tables import created_tables
 from jessiql.testing.stmt_text import assert_statement_lines, stmt2sql
 from .util.models import IdManyFieldsMixin, id_manyfields
+from .util.test_queries import typical_test_sql_query_text, typical_test_query_results, typical_test_query_text_and_results
 
 
 @pytest.mark.parametrize(('query_object', 'expected_query_lines',), [
@@ -24,11 +25,8 @@ def test_sort_sql(connection: sa.engine.Connection, query_object: QueryObjectDic
     class Model(IdManyFieldsMixin, Base):
         __tablename__ = 'a'
 
-    # Query
-    q = JessiQL(query_object, Model)
-
-    # SQL
-    assert assert_statement_lines(q.statement(), *expected_query_lines)
+    # Test
+    typical_test_sql_query_text(query_object, Model, expected_query_lines)
 
 
 @pytest.mark.parametrize(('query_object', 'expected_results'), [
@@ -53,12 +51,8 @@ def test_sort_results(connection: sa.engine.Connection, query_object: QueryObjec
             id_manyfields('m', 3),
         ])
 
-        # Query
-        q = JessiQL(query_object, Model)
-
-        # Results
-        results = q.fetchall(connection)
-        assert results == expected_results
+        # Test
+        typical_test_query_results(connection, query_object, Model, expected_results)
 
 
 @pytest.mark.parametrize(('query_object', 'expected_query_lines', 'expected_results'), [
@@ -102,13 +96,6 @@ def test_joined_sort(connection: sa.engine.Connection, query_object: QueryObject
             id_manyfields('a', 3, user_id=1),
         ])
 
-        # Query
-        q = JessiQL(query_object, User)
+        # Test
+        typical_test_query_text_and_results(connection, query_object, User, expected_query_lines, expected_results)
 
-        # SQL
-        statements = '\n\n\n'.join(map(stmt2sql, q.all_statements()))
-        assert assert_statement_lines(statements, *expected_query_lines)
-
-        # Results
-        results = q.fetchall(connection)
-        assert results == expected_results
