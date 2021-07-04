@@ -1,13 +1,11 @@
 import pytest
 import sqlalchemy as sa
-
 from sqlalchemy.dialects import postgresql as pg
 
-from jessiql.engine import JessiQL
 from jessiql.query_object import QueryObjectDict
 from jessiql.testing.insert import insert
 from jessiql.testing.recreate_tables import created_tables
-from jessiql.testing.stmt_text import assert_statement_lines, stmt2sql
+
 from .util.models import IdManyFieldsMixin, id_manyfields
 from .util.test_queries import typical_test_sql_query_text, typical_test_query_results, typical_test_query_text_and_results
 
