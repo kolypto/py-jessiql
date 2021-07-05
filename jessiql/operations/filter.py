@@ -11,8 +11,8 @@ from .base import Operation
 
 from jessiql.query_object.filter import FilterExpressionBase, FieldFilterExpression, BooleanFilterExpression
 from jessiql import exc
-from ..sainfo.columns import resolve_column_by_name
-from ..typing import SAModelOrAlias
+from jessiql.sainfo.columns import resolve_column_by_name
+from jessiql.typing import SAModelOrAlias
 
 
 class FilterOperation(Operation):

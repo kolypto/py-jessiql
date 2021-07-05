@@ -9,6 +9,7 @@ import sqlalchemy as sa
 
 from jessiql import operations
 from jessiql.query_object import QueryObject, SelectedRelation
+from jessiql.query_object.resolve import resolve_query_object
 from jessiql.sainfo.models import unaliased_class
 from jessiql.typing import SAModelOrAlias, SAAttribute, SARowDict
 
@@ -20,8 +21,6 @@ from .loader import QueryLoaderBase, PrimaryQueryLoader, RelatedQueryLoader
 #   (User,)
 #   (User, 'articles', Article)
 #   (User, 'articles', Article, 'comments', Comment)
-from ..query_object.resolve import resolve_query_object
-
 LoadPath = tuple[Union[type, SAAttribute]]
 
 
