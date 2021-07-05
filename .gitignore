@@ -2,38 +2,29 @@
 # it's a library; no lockfile should be committed
 /poetry.lock
 
+# Hidden root files: tools, IDEs, etc
+/.*
+
 # ===[ PYTHON ]=== #
+__pycache__
 
-# Env
-/.python-version
-
-# Package
 /build/
 /dist/
 /*.egg-info/
 /*.egg/
 
-# Tests
-/.tox/
-/.nox/
-/.pytest_cache
-/.coverage
-/.noseids
+# Tools
 /profile.*
-
-# Generated
-__pycache__
-*.py[cod]
-
 
 
 # ===[ COMMON ]=== #
 
-# IDE Projects
-/.idea
-/.*project
-/.settings
-/.vscode
+# Generated
+*.pot
+*.mo
+
+# Runtime
+*.log
 
 # Temps
 *~
@@ -43,13 +34,6 @@ __pycache__
 *.kate-swp
 *.DS_Store
 Thumbs.db
-
-# Generated
-*.pot
-*.mo
-
-# Runtime
-*.log
 
 # But ...
 !.gitkeep
