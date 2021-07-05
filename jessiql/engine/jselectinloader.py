@@ -9,6 +9,10 @@ from jessiql.sautil.adapt import SimpleColumnsAdapter
 from jessiql.typing import SAModelOrAlias, SARowDict
 
 
+# TODO: Based on SqlAlchemy v1.4.15. Update SqlAlchemy, see if any changes can/should be backported.
+#   This is a rolling TODO.
+
+
 # Inspired by SelectInLoader._load_for_path() , SqlAlchemy v1.4.15
 # With some differences;
 # * We ignore the `load_with_join` branch because we can ensure all FKs are loaded
@@ -17,20 +21,56 @@ from jessiql.typing import SAModelOrAlias, SARowDict
 # * Some customizations are marked with [CUSTOMIZED]
 # * Some additions are marked with [ADDED]
 class JSelectInLoader:
+    """ Loader for related objects, borrowing the approach from SqlAlchemy's SelectInLoader
+
+    Overall principle:
+    * `source_model` objects have already been loaded. They're called "states"
+    * `relation_property` is the relationship we're going to load. It points to `target_model`.
+    * `prepare_states()` collects states (loaded objects) and foreign keys to be used for loading
+    * `prepare_query()` adds required fields to the SELECT statements
+    * `fetch_results_and_populate_states()` populates existing objects ("states") with loaded relation fields
+    """
     def __init__(self, source_model: SAModelOrAlias, relation_property: sa.orm.RelationshipProperty, target_model: SAModelOrAlias):
+        """
+
+        Args:
+            source_model: The parent model. Its objects have already been loaded.
+            relation_property: The joined relationship: the one that should be loaded
+            target_model: The model that the relationship points to.
+        """
+        # Models (or aliases)
         self.source_model = source_model
-        self.relation_property = relation_property
         self.target_model = target_model
 
-        self.key = relation_property.key
+        # Mappers
         self.source_mapper: sa.orm.Mapper = source_model.__mapper__
-        self.target_mapper: sa.orm.Mapper = relation_property.mapper
+        self.target_mapper: sa.orm.Mapper = target_model.__mapper__
 
+        # Relationship and its name (key)
+        self.relation_property = relation_property
+        self.key = relation_property.key
+
+        # Use `SelectInLoader` to produce `query_info` for us. We'll reuse it.
+        # This object contains joining information
         loader = sa.orm.strategies.SelectInLoader(relation_property, ())
         self.query_info = loader._query_info
 
+    __slots__ = (
+        'source_model', 'target_model',
+        'source_mapper', 'target_mapper',
+        'relation_property', 'key',
+        'query_info',
+        'our_states', 'none_states',
+    )
+
     # Inspired by SelectInLoader._load_for_path(), part 1, SqlAlchemy v1.4.15
     def prepare_states(self, states: list[SARowDict]):
+        """ Get the states to be populated, gather information from them
+
+        Note that states haven't been provided to the constructor.
+        This is the first time this class sees them.
+        """
+        # Use `query_info` from SelectInLoader
         query_info = self.query_info
 
         # This value is set to `True` when either `relationship(omit_join=False)` was set, or when the left mapper entities
@@ -83,6 +123,7 @@ class JSelectInLoader:
 
     # Inspired by SelectInLoader._load_for_path(), part 2, SqlAlchemy v1.4.15
     def prepare_query(self, q: sa.sql.Select) -> sa.sql.Select:
+        """ Prepare the statement for loading: add columns to select, add filter condition """
         # [ADDED] Adapt pk_cols
         adapter = SimpleColumnsAdapter(self.target_model)
         pk_cols = adapter.replace_many(self.query_info.pk_cols)
@@ -98,11 +139,13 @@ class JSelectInLoader:
         return q
 
     def fetch_results_and_populate_states(self, connection: sa.engine.Connection, q: sa.sql.Select) -> abc.Iterator[SARowDict]:
+        """ Execute the query, fetch results, populate states """
         if self.query_info.load_only_child:
             yield from self._load_via_child(connection, self.our_states, self.none_states, q)
         else:
             yield from self._load_via_parent(connection, self.our_states, q)
 
+    # Chunk size: how many related objects to load at once with one SQL IN(...) query
     CHUNKSIZE = sa.orm.strategies.SelectInLoader._chunksize
 
     # Inspired by SelectInLoader._load_via_parent() , SqlAlchemy v1.4.15
@@ -171,7 +214,6 @@ class JSelectInLoader:
 
             # [ADDED] Return loaded objects
             yield from data.values()
-
 
 
 def get_primary_key_tuple(mapper: sa.orm.Mapper, row: SARowDict) -> tuple:

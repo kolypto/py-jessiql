@@ -6,7 +6,9 @@ from .query_object import QueryObject, QueryObjectDict
 from . import query_object, exc
 
 # TODO: write comments throughout the code
-# TODO: how to add custom filter when a relation is joined? hook in a subclass?
+# TODO: README.md
+# TODO: unit-test customization handlers
+# TODO: update SqlAlchemy, see if any changes can/should be made to JSelectInLoader
 # TODO: make MyPy happy
 
 # TODO: GraphQL integration
@@ -22,3 +24,5 @@ from . import query_object, exc
 #   > min, max, sum, avg + filter
 # TODO: pagination URL generation for (skip,limit) and for akeyset pagination
 #   > generate URLs, generate akeyset conditions
+
+# TODO: use baked queries to speed things up

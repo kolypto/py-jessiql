@@ -1,6 +1,6 @@
 """ Tools to resolve query object references into actual SqlAlchemy attributes
 
-These methods take QueryObject classes and "resolve" them: augment them with information from SqlAlchemy models
+These methods take QueryObject classes and "resolve" them: populate them with information from SqlAlchemy models
 """
 
 from __future__ import annotations
