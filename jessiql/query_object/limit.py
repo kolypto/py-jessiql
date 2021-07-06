@@ -24,3 +24,6 @@ class LimitQuery(OperationInputBase):
 
         # Construct
         return cls(limit=limit)
+
+    def export(self) -> Optional[int]:
+        return self.limit

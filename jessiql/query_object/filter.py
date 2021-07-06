@@ -31,6 +31,12 @@ class FilterQuery(OperationInputBase):
         conditions = cls._parse_input_fields(filter)
         return cls(conditions=conditions)
 
+    def export(self) -> dict:
+        res = {}
+        for condition in self.conditions:
+            res.update(condition.export())
+        return res
+
     @classmethod
     @collecting
     def _parse_input_fields(cls, condition: dict) -> list[FilterExpressionBase]:
@@ -80,6 +86,9 @@ class FilterQuery(OperationInputBase):
 class FilterExpressionBase:
     """ Base class for filter expressions """
 
+    def export(self) -> dict:
+        raise NotImplementedError
+
 
 @dataclass_notset('property', 'is_array', 'is_json')
 @dataclass
@@ -100,6 +109,9 @@ class FieldFilterExpression(FilterExpressionBase):
 
     __slots__ = 'name', 'operator', 'value', 'property', 'is_array', 'is_json'
 
+    def export(self) -> dict:
+        return {self.field: {self.operator: self.value}}
+
 
 @dataclass
 class BooleanFilterExpression(FilterExpressionBase):
@@ -112,3 +124,11 @@ class BooleanFilterExpression(FilterExpressionBase):
     clauses: list[FilterExpressionBase]
 
     __slots__ = 'operator', 'clauses'
+
+    def export(self) -> dict:
+        return {
+            self.operator: [
+                clause.export()
+                for clause in self.clauses
+            ]
+        }

@@ -48,6 +48,12 @@ class SortQuery(OperationInputBase):
         fields = [cls._parse_input_field(field) for field in sort]
         return cls(fields=fields)
 
+    def export(self) -> list[str]:
+        return [
+            field.export()
+            for field in self.fields
+        ]
+
     @staticmethod
     def _parse_input_field(field: Union[str]) -> SortingField:
         """ Parse a field string into a SortingField object """
@@ -77,6 +83,9 @@ class SortingField:
     property: sa.orm.ColumnProperty
 
     __slots__ = 'name', 'direction', 'property'
+
+    def export(self) -> str:
+        return f'{self.name}{self.direction.value}'
 
 
 class SortingDirection(Enum):

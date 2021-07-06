@@ -73,6 +73,16 @@ class QueryObject:
         resolve.resolve_query_object(self, Model)
         return self
 
+    def dict(self) -> QueryObjectDict:
+        """ Convert the Query Object back into JSON dict """
+        return QueryObjectDict(
+            select=self.select.export(),
+            filter=self.filter.export(),
+            sort=self.sort.export(),
+            skip=self.skip.export(),
+            limit=self.limit.export(),
+        )
+
 
 # Import structures for individual fields
 from .select import SelectQuery

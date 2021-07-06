@@ -24,3 +24,6 @@ class SkipQuery(OperationInputBase):
 
         # Construct
         return cls(skip=skip)
+
+    def export(self) -> Optional[int]:
+        return self.skip

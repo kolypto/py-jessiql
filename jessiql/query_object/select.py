@@ -16,6 +16,7 @@ from jessiql.sainfo.names import field_name
 from jessiql.util.dataclasses import dataclass_notset
 
 from .base import OperationInputBase
+from ..util.funcy import collecting
 
 
 @dataclass
@@ -86,6 +87,14 @@ class SelectQuery(OperationInputBase):
         # Construct
         return cls(fields=fields, relations=relations)
 
+    @collecting
+    def export(self) -> list:
+        yield from self.fields.keys()
+        if self.relations:
+            yield {
+                relation.name: relation.query.dict()
+                for relation in self.relations.values()
+            }
 
 @dataclass_notset('property', 'is_array', 'is_json')
 @dataclass
@@ -99,6 +108,9 @@ class SelectedField:
 
     __slots__ = 'name', 'property', 'is_array', 'is_json'
 
+    def export(self) -> str:
+        return self.name
+
 
 @dataclass_notset('property', 'uselist')
 @dataclass
@@ -111,6 +123,9 @@ class SelectedRelation:
     uselist: bool
 
     __slots__ = 'name', 'query', 'property', 'uselist'
+
+    def export(self) -> dict:
+        return {self.name: self.query.dict()}
 
 
 from .query_object import QueryObject
