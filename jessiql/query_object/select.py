@@ -9,7 +9,6 @@ from functools import cached_property
 from typing import Union
 
 import sqlalchemy as sa
-import sqlalchemy.orm
 
 from jessiql import exc
 from jessiql.typing import SAAttribute
@@ -21,15 +20,22 @@ from .base import OperationInputBase
 
 @dataclass
 class SelectQuery(OperationInputBase):
+    """ Query Object operation: the "select" operation """
+    # Selected fields: map
     fields: dict[str, SelectedField]
+    # Selected relations: map
     relations: dict[str, SelectedRelation]
 
     def __init__(self, fields: abc.Iterable[SelectedField], relations: abc.Iterable[SelectedRelation]):
+        # Fields, map
         self.fields = {field.name: field for field in fields}
+
+        # Relations, map
         self.relations = {relation.name: relation for relation in relations}
 
     @cached_property
     def fields_and_relations(self) -> dict[str, Union[SelectedField, SelectedRelation]]:
+        """ Get a mapping of both fields and relations """
         return {
             **self.fields,
             **self.relations,
@@ -37,9 +43,15 @@ class SelectQuery(OperationInputBase):
 
     @cached_property
     def names(self) -> frozenset[str]:
+        """ Get the set of selected field and relation names """
         return frozenset(self.fields) | frozenset(self.relations)
 
     def __contains__(self, field: Union[str, SAAttribute]):
+        """ Check if a field (column or relationship) is selected
+
+        Args:
+             field: Name or instrumented attribute
+        """
         return field_name(field) in self.names
 
     @classmethod
@@ -92,7 +104,7 @@ class SelectedField:
 @dataclass
 class SelectedRelation:
     name: str
-    query: QueryObject
+    query: QueryObject  # nested query
 
     # Populated when resolved by resolve_selected_relation()
     property: sa.orm.RelationshipProperty

@@ -12,6 +12,8 @@ from .base import OperationInputBase
 
 @dataclass
 class SkipQuery(OperationInputBase):
+    """ Query Object operation: the "skip" operation """
+    # Skip: the number of objects to skip
     skip: Optional[int]
 
     @classmethod

@@ -12,6 +12,8 @@ from .base import OperationInputBase
 
 @dataclass
 class LimitQuery(OperationInputBase):
+    """ Query Object operation: the "limit" operation """
+    # Limit: the number of objects to limit the result set to
     limit: Optional[int]
 
     @classmethod

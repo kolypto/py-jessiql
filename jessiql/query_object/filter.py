@@ -17,6 +17,8 @@ from .base import OperationInputBase
 
 @dataclass
 class FilterQuery(OperationInputBase):
+    """ Query Object operation: the "filter" operation """
+    # List of conditions: field conditions and/or boolean conditions
     conditions: list[FilterExpressionBase]
 
     @classmethod
@@ -26,22 +28,27 @@ class FilterQuery(OperationInputBase):
             raise exc.QueryObjectError(f'"filter" must be an object')
 
         # Construct
-        conditions = cls.parse_input_fields(filter)
+        conditions = cls._parse_input_fields(filter)
         return cls(conditions=conditions)
 
     @classmethod
     @collecting
-    def parse_input_fields(cls, condition: dict) -> list[FilterExpressionBase]:
+    def _parse_input_fields(cls, condition: dict) -> list[FilterExpressionBase]:
+        # Iterate the object
         for key, value in condition.items():
+            # If a key starts with $ ($and, $or, ...), it is a boolean expression
             if key.startswith('$'):
                 yield cls._parse_input_boolean_expression(key, value)
+            # If not, then it's a field expression
             else:
                 yield from cls._parse_input_field_expressions(key, value)
 
     @classmethod
     def _parse_input_field_expressions(cls, field_name: str, value: Union[dict[str, Any], Any]):
+        # If the value is not a dict, it's a shortcut: { key: value }
         if not isinstance(value, dict):
             yield FieldFilterExpression(field=field_name, operator='$eq', value=value)
+        # If the value is a dict, every item will be an operator and an operand
         else:
             for operator, operand in value.items():
                 yield FieldFilterExpression(field=field_name, operator=operator, value=operand)
@@ -71,12 +78,17 @@ class FilterQuery(OperationInputBase):
 
 
 class FilterExpressionBase:
-    pass
+    """ Base class for filter expressions """
 
 
 @dataclass_notset('property', 'is_array', 'is_json')
 @dataclass
 class FieldFilterExpression(FilterExpressionBase):
+    """ A filter for a field
+
+    Example:
+        { age: {$gt: 18} }
+    """
     field: str
     operator: str
     value: Any
@@ -91,6 +103,11 @@ class FieldFilterExpression(FilterExpressionBase):
 
 @dataclass
 class BooleanFilterExpression(FilterExpressionBase):
+    """ A filter with a boolean expression
+
+    Example:
+        { $or: [ ..., ... ] }
+    """
     operator: str
     clauses: list[FilterExpressionBase]
 

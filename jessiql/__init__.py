@@ -3,9 +3,10 @@ __version__ = __import__('pkg_resources').get_distribution('jessiql').version
 from .engine import Query
 from .query_object import QueryObject, QueryObjectDict
 
-from . import query_object, exc
+from . import query_object
+from . import exc
 
-# TODO: write comments throughout the code
+# TODO: write comments for: operations, testing, sautil
 # TODO: README.md
 # TODO: unit-test customization handlers
 # TODO: update SqlAlchemy, see if any changes can/should be made to JSelectInLoader

@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from collections import abc
 from enum import Enum
 
 from functools import cached_property
@@ -21,13 +20,22 @@ from .base import OperationInputBase
 
 @dataclass
 class SortQuery(OperationInputBase):
+    """ Query Object operation: the "sort" operation """
+    # The list of fields and directions to sort with
+    # Note that the list is an ordered collection: order matters here
     fields: list[SortingField]
 
     @cached_property
     def names(self) -> frozenset[str]:
+        """ Get a set of field names involved in sorting """
         return frozenset(field.name for field in self.fields)
 
     def __contains__(self, field: Union[str, SAAttribute]):
+        """ Check if the field used in sorting
+
+        Args:
+             field: Name or instrumented attribute
+        """
         return field_name(field) in self.names
 
     @classmethod
@@ -37,11 +45,12 @@ class SortQuery(OperationInputBase):
             raise exc.QueryObjectError(f'"sort" must be an array')
 
         # Construct
-        fields = [cls.parse_input_field(field) for field in sort]
+        fields = [cls._parse_input_field(field) for field in sort]
         return cls(fields=fields)
 
-    @classmethod
-    def parse_input_field(cls, field: Union[str]) -> SortingField:
+    @staticmethod
+    def _parse_input_field(field: Union[str]) -> SortingField:
+        """ Parse a field string into a SortingField object """
         # Look at the ending character
         end_c = field[-1:]
 
