@@ -8,7 +8,6 @@ from . import exc
 
 # TODO: write comments for: operations, testing, sautil
 # TODO: README.md
-# TODO: unit-test customization handlers
 # TODO: update SqlAlchemy, see if any changes can/should be made to JSelectInLoader
 # TODO: make MyPy happy
 

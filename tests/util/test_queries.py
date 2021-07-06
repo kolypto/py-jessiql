@@ -54,14 +54,17 @@ def typical_test_query_text_and_results(connection: sa.engine.Connection, query_
     q = Query(query_object, Model)
 
     # SQL
-    statements = '\n\n\n'.join(map(stmt2sql, q.all_statements()))
-    assert assert_statement_lines(statements, *expected_query_lines)
+    assert_query_statements_lines(q, *expected_query_lines)
 
     # Results
     results = q.fetchall(connection)
     assert results == expected_results
 
 
+def assert_query_statements_lines(query: Query, *expected_lines: str, dialect: sa.engine.interfaces.Dialect = None):
+    """ Render a Query and check that the provided lines are in there """
+    statements = '\n\n\n'.join(map(stmt2sql, query.all_statements()))
+    assert_statement_lines(statements, *expected_lines, dialect=dialect)
 
 
 def assert_statement_lines(stmt: Union[str, sa.sql.ClauseElement], *expected_lines: str, dialect: sa.engine.interfaces.Dialect = None):
