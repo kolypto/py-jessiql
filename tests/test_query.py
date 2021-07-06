@@ -53,11 +53,11 @@ def test_query_customize_statements(connection: sa.engine.Connection, query_obje
 
         path = q.load_path
         if path == (Article,):
-            return stmt.filter(Article.user_id == ALLOWED_USER_ID)
+            return stmt.filter(q.Model.user_id == ALLOWED_USER_ID)
         elif path == (Article, 'author', User):
-            return stmt.filter(User.id == ALLOWED_USER_ID)
+            return stmt.filter(q.Model.id == ALLOWED_USER_ID)
         elif path == (Article, 'comments', Comment):
-            return stmt.filter(Comment.user_id == ALLOWED_USER_ID)
+            return stmt.filter(q.Model.user_id == ALLOWED_USER_ID)
         else:
             raise NotImplementedError
 

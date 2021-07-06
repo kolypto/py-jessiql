@@ -13,7 +13,7 @@ class SimpleColumnsAdapter:
     an aliased class should be used, this adapter will convert all references to point to that aliased class.
 
     Example:
-        adapter = SimpleColumnsAdapter(target_model)
+        adapter = SimpleColumnsAdapter(Model)
         pk_cols = adapter.replace_many(query_info.pk_cols)
     """
     def __init__(self, Model: SAModelOrAlias):

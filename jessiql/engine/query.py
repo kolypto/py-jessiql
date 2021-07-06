@@ -16,12 +16,12 @@ class Query(QueryExecutor):
         query_object = dict(select=['login'])
         q = Query(query_object, models.User)
     """
-    def __init__(self, query: Union[QueryObject, QueryObjectDict], target_Model: type):
-        """ Prepare to make a query with this Query Object against target_Model
+    def __init__(self, query: Union[QueryObject, QueryObjectDict], Model: type):
+        """ Prepare to make a query with this Query Object against target Model
 
         Args:
             query: The Query Object, parsed, or its dict
-            target_Model: The Model class to query against
+            Model: The Model class to query against
 
         Raises:
             exc.InvalidColumnError: Invalid column name mentioned (programming error)
@@ -33,14 +33,14 @@ class Query(QueryExecutor):
             query = QueryObject.from_query_object(query)
 
         # Proceed
-        super().__init__(query, target_Model)
+        super().__init__(query, Model)
 
     @classmethod
-    def prepare(cls, target_Model: type):
+    def prepare(cls, Model: type):
         """ Prepare to make a Query against the provided model
 
         Example:
             qUser = Query.prepare(models.User)
             q = qUser(query_object)
         """
-        return partial(cls, target_Model=target_Model)
+        return partial(cls, Model=Model)

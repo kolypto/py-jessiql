@@ -33,7 +33,7 @@ class QueryExecutor:
     query: QueryObject
 
     # The target model to execute the Query against
-    target_Model: SAModelOrAlias
+    Model: SAModelOrAlias
 
     # Load path: (Model, attribute, ...) path to the current model
     # Examples:
@@ -68,21 +68,21 @@ class QueryExecutor:
     # Child executors for related objects
     related_executors: dict[str, QueryExecutor] = None
 
-    def __init__(self, query: QueryObject, target_Model: SAModelOrAlias):
+    def __init__(self, query: QueryObject, Model: SAModelOrAlias):
         """ Initialize a Query Executor for the given Query Object
 
         Args:
             query: The Query Object to execute
-            target_Model: The SqlAlchemt Model class to execute the query against
+            Model: The SqlAlchemt Model class to execute the query against
         """
         # The query and the model to query against
         assert isinstance(query, QueryObject)
         self.query = query
-        self.target_Model = target_Model
+        self.Model = Model
 
         # Load path
         # May be modified by for_relation()
-        self.load_path = (unaliased_class(target_Model),)
+        self.load_path = (unaliased_class(Model),)
 
         # Customization handlers
         # May be modified by for_relation()
@@ -90,24 +90,24 @@ class QueryExecutor:
         self.customize_results = []
 
         # Init operations
-        self.select_op = self.SelectOperation(query, target_Model)
-        self.filter_op = self.FilterOperation(query, target_Model)
-        self.sort_op = self.SortOperation(query, target_Model)
-        self.skiplimit_op = self.SkipLimitOperation(query, target_Model)
+        self.select_op = self.SelectOperation(query, Model)
+        self.filter_op = self.FilterOperation(query, Model)
+        self.sort_op = self.SortOperation(query, Model)
+        self.skiplimit_op = self.SkipLimitOperation(query, Model)
 
         # Init loader
         # May be replaced by for_relation()
         self.loader = self.PrimaryQueryLoader()
 
         # Resolve every input
-        resolve_query_object(self.query, self.target_Model)
+        resolve_query_object(self.query, self.Model)
 
         # Init related executors: QueryExecutor() for every selected relation
         self.related_executors = {
             # Relation name => QueryExecutor
             relation.name: self.__class__(
                 query=relation.query,
-                target_Model=relation.property.mapper.class_,
+                Model=relation.property.mapper.class_,
             )._for_relation(
                 # Init as a related executor
                 source_executor=self,
@@ -127,11 +127,11 @@ class QueryExecutor:
             relation: The relation we're loading
         """
         # Load path: parent + (relation, Model)
-        self.load_path = source_executor.load_path + (relation.name, unaliased_class(self.target_Model))
+        self.load_path = source_executor.load_path + (relation.name, unaliased_class(self.Model))
 
         # Replace the loader: use a Related Loader that can populate objects with related fields
-        source_Model = source_executor.target_Model
-        self.loader = self.RelatedQueryLoader(relation, source_Model, self.target_Model)
+        source_Model = source_executor.Model
+        self.loader = self.RelatedQueryLoader(relation, source_Model, self.Model)
 
         # SkipLimit needs to enter a special pagination mode:
         # ordinary SkipLimit would ruin result sets, so it would use a window function to restrict results per main object.
@@ -217,7 +217,7 @@ class QueryExecutor:
         """
         # Prepare a boilerplate statement for the current model
         # It has no selected fields yet.
-        stmt = sa.select([]).select_from(self.target_Model)
+        stmt = sa.select([]).select_from(self.Model)
 
         # Apply operations to this statement
         # This is where more clauses are applied.
