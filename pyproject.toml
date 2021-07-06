@@ -16,6 +16,9 @@ pytest = "^6.0.1"
 pytest-cov = "^2.10.1"
 psycopg2 = "^2.8.6"
 sqlalchemy-stubs = "^0.4"
+pydantic = "^1.8.2"
+fastapi = "^0.66.0"
+requests = "^2.25.1"
 
 [tool.pytest.ini_options]
 testpaths = [

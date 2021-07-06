@@ -14,9 +14,9 @@ from jessiql import exc
 from jessiql.typing import SAAttribute
 from jessiql.sainfo.names import field_name
 from jessiql.util.dataclasses import dataclass_notset
+from jessiql.util.funcy import collecting
 
 from .base import OperationInputBase
-from ..util.funcy import collecting
 
 
 @dataclass
@@ -95,6 +95,15 @@ class SelectQuery(OperationInputBase):
                 relation.name: relation.query.dict()
                 for relation in self.relations.values()
             }
+
+    def export_select(self):
+        return list(self.fields.keys())
+
+    def export_join(self):
+        return {
+            relation.name: relation.query.dict()
+            for relation in self.relations.values()
+        }
 
 @dataclass_notset('property', 'is_array', 'is_json')
 @dataclass

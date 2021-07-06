@@ -12,7 +12,6 @@ from . import exc
 # TODO: make MyPy happy
 
 # TODO: GraphQL integration
-# TODO: FastAPI integration
 
 # TODO: JSON & JSONB objects, attribute access for filter, sort, select
 #   > { filter: { "meta.id": 10 } }

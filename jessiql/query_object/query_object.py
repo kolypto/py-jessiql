@@ -76,7 +76,8 @@ class QueryObject:
     def dict(self) -> QueryObjectDict:
         """ Convert the Query Object back into JSON dict """
         return QueryObjectDict(
-            select=self.select.export(),
+            select=self.select.export_select(),
+            join=self.select.export_join(),
             filter=self.filter.export(),
             sort=self.sort.export(),
             skip=self.skip.export(),
