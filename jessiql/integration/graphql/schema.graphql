@@ -1,0 +1,22 @@
+""" JessiQL query object, input """
+input QueryObjectInput {
+    # select: gotten from the GraphQL tree itself
+    filter: Object
+    sort: [String!]
+    skip: Int
+    limit: Int
+}
+
+""" JessiQL query object """
+type QueryObject {
+    select: Object
+    join: Object
+    filter: Object
+    sort: [String!]
+    skip: Int
+    limit: Int
+}
+
+
+""" Simple JSON Object """
+scalar Object

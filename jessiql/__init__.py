@@ -11,7 +11,8 @@ from . import exc
 # TODO: update SqlAlchemy, see if any changes can/should be made to JSelectInLoader
 # TODO: make MyPy happy
 
-# TODO: GraphQL integration
+# TODO: a tool to apply JessiQL Query Object to plain lists & dicts (to fake behavior for non-JessiQL APIs).
+#   To achieve that, implement a Query-like engine object that processes Python objects
 
 # TODO: JSON & JSONB objects, attribute access for filter, sort, select
 #   > { filter: { "meta.id": 10 } }
@@ -24,4 +25,4 @@ from . import exc
 # TODO: pagination URL generation for (skip,limit) and for akeyset pagination
 #   > generate URLs, generate akeyset conditions
 
-# TODO: use baked queries to speed things up
+# TODO: use baked queries in JSelectInLoader to speed things up
