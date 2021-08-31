@@ -39,6 +39,8 @@ def query(**fields):
         {},
         {
             'object': {
+                # NOTE: select[] includes "query": field query function does not inspect the model!
+                # This naïve selector would include every field that it finds
                 'id': '1', 'query': query(select=['id', 'query']),
             },
         }
@@ -166,12 +168,19 @@ def test_query_object(query: str, variables: dict, expected_result_query: dict):
     Base = sa.orm.declarative_base()
 
     class Model(IdManyFieldsMixin, Base):
-        __tablename__ = 'a'
+        __tablename__ = 'models'
+
+        # Define some relationships
+        object_id = sa.Column(sa.ForeignKey('models.id'))
+        object_ids = sa.Column(sa.ForeignKey('models.id'))
+
+        object = sa.orm.relationship('Model', foreign_keys=object_id)
+        objects = sa.orm.relationship('Model', foreign_keys=object_ids)
 
     # GraphQL resolver
     def resolve_object(obj, info: GraphQLResolveInfo, query: QueryObjectDict = None):
         query_object = query_object_for(info, runtime_type='Model')
-        return  {
+        return {
             'id': 1,
             'query': query_object.dict(),
         }
@@ -216,9 +225,21 @@ type Query {
 }
 
 type Model {
+    # Real Model fields
     id: ID!
+    a: String!
+    b: String!
+    c: String!
+    d: String!
+    
+    objectId: ID
+    objectIds: [ID]
+    
+    # Real relationships
     object (query: QueryObjectInput): Model
     objects (query: QueryObjectInput): [Model]
+    
+    # Virtual attribute that returns the Query Object
     query: Object
 }
 

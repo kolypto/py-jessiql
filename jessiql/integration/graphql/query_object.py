@@ -4,15 +4,9 @@ import graphql
 
 from jessiql import QueryObjectDict, QueryObject
 
+from .query_object_input_name import get_query_argument_name_for
 from .selection import collect_fields
-
-
-# Input type name for JessiQL Query
-# In JessiQL, the query object argument can have any name. It's located by its type.
-QUERY_OBJECT_INPUT_NAME = 'QueryObjectInput'
-
-# Object type for JessiQL Query
-QUERY_OBJECT_NAME = 'QueryObject'
+from .query_field_func import QueryFieldFunc, query_field_default, QueryFieldInfo
 
 
 def query_object_for(info: graphql.GraphQLResolveInfo, runtime_type: Union[str, graphql.GraphQLObjectType] = None) -> QueryObject:
@@ -52,6 +46,8 @@ def graphql_query_object_dict_from_query(
         selected_field_def: graphql.GraphQLField,
         selected_field: graphql.FieldNode, *,
         runtime_type: Union[str, graphql.GraphQLObjectType] = None,
+        field_query: QueryFieldFunc = query_field_default,
+        _field_query_path: tuple[str] = (),
 ) -> QueryObjectDict:
     """ Inspect the GraphQL query and make a Query Object Dict.
 
@@ -71,6 +67,7 @@ def graphql_query_object_dict_from_query(
             Is used to determine which sub-fields to select from this parent field.
          runtime_type: The name for the model you're currently querying. Used to resolve fragments that depend on types.
             If you need to resolve multiple types, call this function multiple times to get different Query Objects.
+        field_query: A function to decide how a particular field should be included into the Query Object
 
     Returns:
         Query Object Dict.
@@ -93,26 +90,24 @@ def graphql_query_object_dict_from_query(
 
     # Collect all fields at this level
     fields = collect_fields(schema, fragments, variable_values, selected_field.selection_set, runtime_type=runtime_type)
-    selected_field_type = unwrap_type(selected_field_def.type)  # unwrap lists & nonnulls, deal with raw types
+    selected_field_type: graphql.type.definition.GraphQLObjectType = unwrap_type(selected_field_def.type)  # unwrap lists & nonnulls, deal with raw types
 
     # Iterate every field on this level, see if there's a place for them in the Query Object
     for field_name, field_list in fields.items():
         for field in field_list:
             # Get field definition from the schema
-            field_def = selected_field_type.fields[field.name.value]
-            
-            # How to handle? Field? Relation? Nothing?
-            include_as_join = has_query_argument(field_def)
-            include_as_select = not include_as_join
-            # TODO: Allow ignoring certain fields.
-            #   Some GraphQL fields may make no sense in the database. Skip them. But how? Using what filter? Check the DB model? Use directives?
+            field_def: graphql.type.definition.GraphQLField = selected_field_type.fields[field.name.value]
+
+            # How to include this field?
+            info: QueryFieldInfo = field_query(field_name, field_def, _field_query_path)
 
             # Select field
-            if include_as_select:
-                query_object['select'].append(field_name)
+            if info.select:
+                query_object['select'].extend(info.select)
+
             # Join relation
-            elif include_as_join:
-                query_object['join'][field_name] = graphql_query_object_dict_from_query(
+            if info.join_name:
+                query_object['join'][info.join_name] = graphql_query_object_dict_from_query(
                     schema,
                     fragments,
                     variable_values,
@@ -120,7 +115,9 @@ def graphql_query_object_dict_from_query(
                     field,
                     # TODO: runtime type currently cannot be resolved for sub-queries. This means that fragments cannot be used.
                     #   How to fix? callable() that feeds the type? @directives?
-                    runtime_type=None
+                    runtime_type=None,
+                    field_query=field_query,
+                    _field_query_path=_field_query_path+(info.join_name,),
                 )
             # Skip other fields
             else:
@@ -148,45 +145,6 @@ def get_query_argument_value_for(field: graphql.FieldNode, query_arg_name: str, 
     # Nothing found
     else:
         return None
-
-
-def get_query_argument_name_for(field_def: graphql.GraphQLField) -> Optional[str]:
-    """ Get the name of the `query` argument.
-
-    In JessiQL, the query argument can have any name.
-    It is found by its type: "QueryObjectInput" (defined as const QUERY_OBJECT_INPUT_NAME)
-
-    Example:
-        '''
-        type Query {
-            users (q: QueryObjectInput): [User!]
-            posts (query: QueryObjectInput): [Post!]
-        }
-        '''
-
-        get_query_argument_name_for(users) -> 'q'
-        get_query_argument_name_for(posts) -> 'query'
-
-    Args:
-        field_def: Field definition.
-            Example: graphql.utilities.type_info.get_field_def(info.schema, info.parent_type, field_node)
-    Returns:
-        argument name (str), or None if not found.
-    """
-    for arg_name, arg in field_def.args.items():
-        if arg.type.name == QUERY_OBJECT_INPUT_NAME:
-            return arg_name
-    else:
-        return None
-
-
-def has_query_argument(field_def: graphql.GraphQLField) -> bool:
-    """ Test whether the field has a `query` argument with "QueryObjectInput" (const)
-
-    In JessiQL, the query argument can have any name.
-    It is found by its type: "QueryObjectInput" (defined as const QUERY_OBJECT_INPUT_NAME)
-    """
-    return get_query_argument_name_for(field_def) is not None
 
 
 unwrap_type = graphql.get_named_type  # Unwrap GraphQL wrapper types (List, NonNull, etc)
