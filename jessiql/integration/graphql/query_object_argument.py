@@ -1,3 +1,9 @@
+""" Tools to find the name of the Query Object parameter by its type
+
+In JessiQL, the query argument can have any name.
+It is found by its type: "QueryObjectInput" (defined as const QUERY_OBJECT_INPUT_NAME)
+"""
+
 import graphql
 from typing import Optional
 
@@ -11,10 +17,7 @@ QUERY_OBJECT_NAME = 'QueryObject'
 
 
 def get_query_argument_name_for(field_def: graphql.GraphQLField) -> Optional[str]:
-    """ Get the name of the `query` argument.
-
-    In JessiQL, the query argument can have any name.
-    It is found by its type: "QueryObjectInput" (defined as const QUERY_OBJECT_INPUT_NAME)
+    """ Get the name of the `query` argument (found by its type)
 
     Example:
         '''
@@ -41,10 +44,6 @@ def get_query_argument_name_for(field_def: graphql.GraphQLField) -> Optional[str
 
 
 def has_query_argument(field_def: graphql.GraphQLField) -> bool:
-    """ Test whether the field has a `query` argument with "QueryObjectInput" (const)
-
-    In JessiQL, the query argument can have any name.
-    It is found by its type: "QueryObjectInput" (defined as const QUERY_OBJECT_INPUT_NAME)
-    """
+    """ Test whether the field has a `query` argument (found by its type) """
     return get_query_argument_name_for(field_def) is not None
 

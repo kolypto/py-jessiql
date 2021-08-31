@@ -1,21 +1,40 @@
+""" Functions that extract a Query Object from the GraphQL query
+
+It goes through the Query tree, and:
+
+1. Find every `query` argument and takes the Query Object 'filter', 'sort', etc, from it
+2. It walks the selected fields and adds them as Query Object 'select' or 'join'
+"""
+
+
 from typing import Union, Any, Optional
 
 import graphql
 
 from jessiql import QueryObjectDict, QueryObject
 
-from .query_object_input_name import get_query_argument_name_for
+from .query_object_argument import get_query_argument_name_for
 from .selection import collect_fields
 from .query_field_func import QueryFieldFunc, query_field_default, QueryFieldInfo
 
 
-def query_object_for(info: graphql.GraphQLResolveInfo, runtime_type: Union[str, graphql.GraphQLObjectType] = None) -> QueryObject:
+def query_object_for(info: graphql.GraphQLResolveInfo,
+                     runtime_type: Union[str, graphql.GraphQLObjectType] = None,
+                     field_query: QueryFieldFunc = query_field_default,
+                     ) -> QueryObject:
     """ Inspect the GraphQL query and make a Query Object Dict.
+
+    1. Traverses the GraphQL tree
+    2. Finds every field that has a JessiQL `query` argument.
+       It can have any name; it is identified by its type: "QueryObjectInput" (defined as a constant: QUERY_OBJECT_INPUT_NAME)
+    3. These fields are included as "join" relations.
+    4. Some other fields are included as "select" fields.
 
     Args:
         info: The `info` object from your field resolver function
         runtime_type: The name for the model you're currently querying. Used to resolve fragments that depend on types.
             If you need to resolve multiple types, call this function multiple times to get different Query Objects.
+        field_query: A function to decide how a particular field should be included into the Query Object.
 
     Example:
         def resolve_user(obj, info):
@@ -32,7 +51,8 @@ def query_object_for(info: graphql.GraphQLResolveInfo, runtime_type: Union[str, 
             info.variable_values,
             selected_field_def=selected_field_def,
             selected_field=field_node,
-            runtime_type=runtime_type
+            runtime_type=runtime_type,
+            field_query=field_query,
         )
 
     # Convert into a QueryObject
@@ -50,12 +70,6 @@ def graphql_query_object_dict_from_query(
         _field_query_path: tuple[str] = (),
 ) -> QueryObjectDict:
     """ Inspect the GraphQL query and make a Query Object Dict.
-
-    1. Traverses the GraphQL tree
-    2. Finds every field that has a JessiQL `query` argument.
-       It can have any name; it is identified by its type: "QueryObjectInput" (defined as a constant: QUERY_OBJECT_INPUT_NAME)
-    3. These fields are included as "join" relations.
-    4. Some other fields are included as "select" fields.
 
     Args:
          schema: GraphQL schema to use: the definition
@@ -93,13 +107,18 @@ def graphql_query_object_dict_from_query(
     selected_field_type: graphql.type.definition.GraphQLObjectType = unwrap_type(selected_field_def.type)  # unwrap lists & nonnulls, deal with raw types
 
     # Iterate every field on this level, see if there's a place for them in the Query Object
+    # Note that `field_name` may not be the original field name: it may be aliased by the query!
     for field_name, field_list in fields.items():
         for field in field_list:
+            # Schema field name
+            # Note that `field_name` may be the aliased name, whereas `field.name.value` is always the name as defined in the schema
+            schema_field_name = field.name.value
+
             # Get field definition from the schema
             field_def: graphql.type.definition.GraphQLField = selected_field_type.fields[field.name.value]
 
             # How to include this field?
-            info: QueryFieldInfo = field_query(field_name, field_def, _field_query_path)
+            info: QueryFieldInfo = field_query(schema_field_name, field_def, _field_query_path)
 
             # Select field
             if info.select:

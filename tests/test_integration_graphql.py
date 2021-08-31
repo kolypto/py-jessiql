@@ -45,6 +45,27 @@ def query(**fields):
             },
         }
     ),
+    # Test: field aliases
+    (
+            ''' 
+            query { 
+                first: object { first_id: id query } 
+                second: object { second_id: id query } 
+            }
+            ''',
+            {},
+            {
+                # These top-level names come from graphQL field names themselves
+                'first': {
+                    # The query must contain un-aliased names!
+                    'first_id': '1', 'query': query(select=['id', 'query']),
+                },
+                'second': {
+                    # The query must contain un-aliased names!
+                    'second_id': '1', 'query': query(select=['id', 'query']),
+                },
+            }
+    ),
     # Test: JessiQL query: "query" argument
     (
         ''' 

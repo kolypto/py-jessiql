@@ -6,7 +6,7 @@ import dataclasses
 from collections import abc
 from typing import Optional
 
-from .query_object_input_name import has_query_argument
+from .query_object_argument import has_query_argument
 
 
 @dataclasses.dataclass
