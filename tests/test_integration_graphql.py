@@ -7,6 +7,7 @@ from graphql import GraphQLResolveInfo
 
 from jessiql import QueryObjectDict
 from jessiql.integration.graphql import query_object_for
+from jessiql.integration.graphql.query_field.sa_model import QueryModelField
 
 from tests.util.models import IdManyFieldsMixin
 
@@ -185,6 +186,7 @@ def query(**fields):
         ),
 ])
 def test_query_object(query: str, variables: dict, expected_result_query: dict):
+    """ Test how Query Object is generated """
     # Models
     Base = sa.orm.declarative_base()
 
@@ -216,12 +218,7 @@ def test_query_object(query: str, variables: dict, expected_result_query: dict):
         ]
 
     # Prepare our schema
-    from jessiql.integration.graphql.schema import graphql_jessiql_schema
-    schema = graphql.build_schema(
-        GQL_SCHEMA +
-        # Also load QueryObject and QueryObjectInput
-        graphql_jessiql_schema
-    )
+    schema = schema_prepare()
 
     # Bind resolvers
     schema.type_map['Query'].fields['object'].resolve = resolve_object
@@ -236,6 +233,77 @@ def test_query_object(query: str, variables: dict, expected_result_query: dict):
         raise res.errors[0]
     __import__('pprint').pprint(res.data)
     assert res.data == expected_result_query
+
+
+@pytest.mark.parametrize(('query_str', 'expected_query_object'), [
+    # Test: Query Object only includes real fields
+    (
+    '''
+    query {
+        object { 
+            # Real SA model attributes
+            id a b c 
+            # Do not exist on the model
+            x y z query 
+        }
+    }
+    ''',
+    query(select=['id', 'a', 'b', 'c']),
+    ),
+    # Test: nested objects
+    (
+    '''
+    query {
+        object { 
+            # 'a' is real, 'z' is not
+            a z
+            object {
+                a z
+                objects {
+                    a z
+                }
+            } 
+        }
+    }
+    ''',
+    query(
+        select=['a'],
+        join={
+            'object': query(
+            select=['a'],
+                join={
+                    'objects': query(select=['a'])
+                }
+            ),
+        }
+    ),
+    ),
+])
+def test_query_object_with_sa_model(query_str: str, expected_query_object: dict):
+    """ Test how Query Object works with a real SqlAlchemy model """
+    # Models
+    Base = sa.orm.declarative_base()
+    class Model(IdManyFieldsMixin, Base):
+        __tablename__ = 'models'
+
+        # Define some relationships
+        object_id = sa.Column(sa.ForeignKey('models.id'))
+        object_ids = sa.Column(sa.ForeignKey('models.id'))
+
+        object = sa.orm.relationship('Model', foreign_keys=object_id)
+        objects = sa.orm.relationship('Model', foreign_keys=object_ids)
+
+    # Prepare the schema and the query document
+    schema = schema_prepare()
+    query = graphql.parse(query_str)
+
+    # Prepare ResolveInfo for the top-level object (query)
+    execution_context = graphql.ExecutionContext.build(schema=schema, document=query)
+    info = build_resolve_info_for(schema, query, execution_context)
+
+    # Get the Query Object
+    query_object = query_object_for(info, runtime_type='Model', field_query=QueryModelField(Model))
+    assert query_object.dict() == expected_query_object
 
 
 # language=graphql
@@ -262,6 +330,36 @@ type Model {
     
     # Virtual attribute that returns the Query Object
     query: Object
+    
+    # Some virtual attributes that only exist in GraphQL
+    x: String!
+    y: String!
+    z: String!
 }
-
 '''
+
+
+def schema_prepare() -> graphql.GraphQLSchema:
+    """ Build a GraphQL schema for testing JessiQL queries """
+    from jessiql.integration.graphql.schema import graphql_jessiql_schema
+    return graphql.build_schema(
+        GQL_SCHEMA +
+        # Also load QueryObject and QueryObjectInput
+        graphql_jessiql_schema
+    )
+
+
+def build_resolve_info_for(schema: graphql.GraphQLSchema, query: graphql.DocumentNode, execution_context: graphql.ExecutionContext) -> graphql.GraphQLResolveInfo:
+    """ Given a simple query, prepare the ResolveInfo object for the top level """
+    # We only support one query in this test
+    assert len(query.definitions) == 1
+    query_type = schema.type_map['Query']
+    query_node = query.definitions[0]
+    query_selection = query_node.selection_set.selections
+
+    return execution_context.build_resolve_info(
+        field_def=graphql.utilities.type_info.get_field_def(schema, query_type, query_selection[0]),
+        field_nodes=query_selection,
+        parent_type=query_type,
+        path=graphql.pyutils.Path(None, 'query', None)
+    )

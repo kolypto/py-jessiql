@@ -15,12 +15,12 @@ from jessiql import QueryObjectDict, QueryObject
 
 from .query_object_argument import get_query_argument_name_for
 from .selection import collect_fields
-from .query_field_func import QueryFieldFunc, query_field_default, QueryFieldInfo
+from .query_field import QueryFieldFunc, QueryFieldInfo, query_every_field
 
 
 def query_object_for(info: graphql.GraphQLResolveInfo,
                      runtime_type: Union[str, graphql.GraphQLObjectType] = None,
-                     field_query: QueryFieldFunc = query_field_default,
+                     field_query: QueryFieldFunc = query_every_field,
                      ) -> QueryObject:
     """ Inspect the GraphQL query and make a Query Object Dict.
 
@@ -66,7 +66,7 @@ def graphql_query_object_dict_from_query(
         selected_field_def: graphql.GraphQLField,
         selected_field: graphql.FieldNode, *,
         runtime_type: Union[str, graphql.GraphQLObjectType] = None,
-        field_query: QueryFieldFunc = query_field_default,
+        field_query: QueryFieldFunc = query_every_field,
         _field_query_path: tuple[str] = (),
 ) -> QueryObjectDict:
     """ Inspect the GraphQL query and make a Query Object Dict.
@@ -136,7 +136,7 @@ def graphql_query_object_dict_from_query(
                     #   How to fix? callable() that feeds the type? @directives?
                     runtime_type=None,
                     field_query=field_query,
-                    _field_query_path=_field_query_path+(info.join_name,),
+                    _field_query_path=_field_query_path + (info.join_name,),
                 )
             # Skip other fields
             else:
