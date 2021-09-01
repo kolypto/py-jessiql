@@ -14,7 +14,7 @@ class QueryObjectDict(TypedDict):
     join: Optional[dict]
     filter: Optional[dict]
     sort: Optional[list[str]]
-    skip: Optional[int]
+    skip: Optional[Union[int, str]]
     limit: Optional[int]
 
 

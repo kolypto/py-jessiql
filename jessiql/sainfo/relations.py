@@ -32,7 +32,7 @@ def resolve_relation_by_name(field_name: str, Model: SAModelOrAlias, *, where: s
     return attribute
 
 
-# region: Relation types
+# region: Relation Attribute types
 
 @cache
 def is_relation(attr: SAAttribute):
@@ -61,7 +61,7 @@ def is_relation_dynamic_loader(attribute: SAAttribute):
 
 # endregion
 
-# region Relation info
+# region Relation Attribute info
 
 @cache
 def is_array(attribute: SAAttribute) -> bool:

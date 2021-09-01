@@ -4,8 +4,6 @@ from functools import partial
 from typing import Union
 
 from jessiql.query_object import QueryObject, QueryObjectDict
-from jessiql import exc
-
 from .query_executor import QueryExecutor
 
 

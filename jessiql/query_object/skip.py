@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Optional
+from typing import Optional, Union
 
 from jessiql import exc
 
@@ -15,15 +15,20 @@ class SkipQuery(OperationInputBase):
     """ Query Object operation: the "skip" operation """
     # Skip: the number of objects to skip
     skip: Optional[int]
+    # Page: opaque cursor, used with cursor-based pagination
+    page: Optional[str]
 
     @classmethod
-    def from_query_object(cls, skip: Optional[int]):
-        # Check types
-        if skip is not None and not isinstance(skip, int):
-            raise exc.QueryObjectError(f'"skip" must be an integer')
-
-        # Construct
-        return cls(skip=skip)
+    def from_query_object(cls, skip: Optional[Union[int, str]]):
+        # Check types:
+        if skip is None:
+            return cls(skip=None, page=None)
+        elif isinstance(skip, int):
+            return cls(skip=skip, page=None)
+        elif isinstance(skip, str) and (skip.startswith('skip:') or skip.startswith('keys:')):
+            return cls(skip=None, page=skip)
+        else:
+            raise exc.QueryObjectError(f'"skip" must be an integer or a cursor')
 
     def export(self) -> Optional[int]:
-        return self.skip
+        return self.skip or self.page

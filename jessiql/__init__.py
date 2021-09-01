@@ -6,6 +6,8 @@ from .query_object import QueryObject, QueryObjectDict
 from . import query_object
 from . import exc
 
+from .features.cursor import QueryPage, PageLinks
+
 
 # TODO: README.md
 # TODO: update SqlAlchemy, see if any changes can/should be made to JSelectInLoader

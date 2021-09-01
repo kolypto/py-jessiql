@@ -103,12 +103,6 @@ class QueryExecutor:
         self.customize_statements = []
         self.customize_results = []
 
-        # Init operations
-        self.select_op = self.SelectOperation(query, Model)
-        self.filter_op = self.FilterOperation(query, Model)
-        self.sort_op = self.SortOperation(query, Model)
-        self.skiplimit_op = self.SkipLimitOperation(query, Model)
-
         # Load path
         # May be modified by for_relation()
         self.load_path = (unaliased_class(Model),)
@@ -117,8 +111,21 @@ class QueryExecutor:
         # May be replaced by for_relation()
         self.loader = self.PrimaryQueryLoader()
 
+        # Init operations
+        self.select_op = self.SelectOperation(query, Model)
+        self.filter_op = self.FilterOperation(query, Model)
+        self.sort_op = self.SortOperation(query, Model)
+        self.skiplimit_op = self.SkipLimitOperation(query, Model)
+
         # Resolve every input
         resolve_query_object(self.query, self.Model)
+
+        # Run for_query() on every operation
+        # It is important that this is done after `self.query` is resolved!
+        self.select_op.for_query(self)
+        self.filter_op.for_query(self)
+        self.sort_op.for_query(self)
+        self.skiplimit_op.for_query(self)
 
         # Init related executors: QueryExecutor() for every selected relation
         self.related_executors = {
@@ -233,6 +240,18 @@ class QueryExecutor:
             # Fetch related objects
             # Results are discarded here because `executor.loader` has inserted them into `states` by now
             results = executor.fetchall(connection)
+
+    @property
+    def query_level(self) -> int:
+        """ Get the "level" of this query
+
+        Level 1: the root query
+        Level 2: query that loads related objects
+        Level 3: query that loads related objects of the next level
+        """
+        # First level: (Model,)
+        # Second level: (Model, relation name, relationship property)
+        return 1 + (len(self.load_path) - 1) // 2
 
     def statement(self) -> sa.sql.Select:
         """ Build an SQL SELECT statement for the current Model.

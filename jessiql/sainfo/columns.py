@@ -37,7 +37,7 @@ def resolve_column_by_name(field_name: str, Model: SAModelOrAlias, *, where: str
     return attribute
 
 
-# region: Column types
+# region: Column Attribute types
 
 @cache
 def is_column(attribute: SAAttribute):
@@ -75,7 +75,7 @@ def is_composite_property(attribute: SAAttribute):
 # endregion
 
 
-# region Column info
+# region Column Attribute info
 
 @cache
 def get_column_type(attribute: SAAttribute) -> sa.types.TypeEngine:
@@ -97,5 +97,20 @@ def is_array(attribute: SAAttribute) -> bool:
 def is_json(attribute: SAAttribute) -> bool:
     """ Is the attribute a PostgreSql JSON column? """
     return isinstance(get_column_type(attribute), sa.JSON)
+
+# endregion
+
+
+# region Column Properties info
+
+def is_column_property_nullable(column_property: sa.orm.ColumnProperty) -> bool:
+    """ Check whether a column property is nullable """
+    return column_property.expression.nullable
+
+
+def is_column_property_unique(column_property: sa.orm.ColumnProperty) -> bool:
+    """ Check whether a column property's value is unique """
+    return column_property.expression.primary_key or column_property.expression.unique
+
 
 # endregion

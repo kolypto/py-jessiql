@@ -1,10 +1,12 @@
+from __future__ import annotations
+
 from typing import Optional
 
 import sqlalchemy as sa
 
-from jessiql.sautil.adapt import SimpleColumnsAdapter
 from jessiql.typing import SAAttribute, SAModelOrAlias
 from jessiql.query_object import QueryObject
+from jessiql.sautil.adapt import SimpleColumnsAdapter
 
 from .base import Operation
 from .sort import get_sort_fields_with_direction
@@ -21,11 +23,19 @@ class SkipLimitOperation(Operation):
     this way every related object gets its own pagination!
     """
 
+    skip: Optional[int]
+    limit: Optional[int]
+
     def __init__(self, query: QueryObject, target_Model: SAModelOrAlias):
         super().__init__(query, target_Model)
         self._window_over_foreign_keys = None
 
-    __slots__ = '_window_over_foreign_keys',
+        # Prepare the values in advance
+        # Why? because subclasses may want to modify it.
+        self.skip = self.query.skip.skip
+        self.limit = self.query.limit.limit
+
+    __slots__ = '_window_over_foreign_keys', 'skip', 'limit'
 
     # Enables pagination with a window function.
     # Value: list of foreign keys attributes to iterate against
@@ -52,12 +62,10 @@ class SkipLimitOperation(Operation):
 
     def _apply_simple_skiplimit_pagination(self, stmt: sa.sql.Select):
         """ Pagination for the SKIP/LIMIT mode: add SKIP/LIMIT clauses """
-        skip, limit = self.query.skip.skip, self.query.limit.limit
-
-        if skip:
-            stmt = stmt.offset(skip)
-        if limit:
-            stmt = stmt.limit(limit)
+        if self.skip:
+            stmt = stmt.offset(self.skip)
+        if self.limit:
+            stmt = stmt.limit(self.limit)
 
         # Done
         return stmt
@@ -87,7 +95,7 @@ class SkipLimitOperation(Operation):
             6       3               1
             7       3               2
         """
-        skip, limit = self.query.skip.skip, self.query.limit.limit
+        skip, limit = self.skip, self.limit
 
         # Apply it only when there's a limit
         if not skip and not limit:

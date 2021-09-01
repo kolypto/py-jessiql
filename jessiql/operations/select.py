@@ -6,9 +6,10 @@ from jessiql.query_object import QueryObject, SelectQuery
 from jessiql.sainfo.columns import resolve_column_by_name
 from jessiql.sautil.adapt import LeftRelationshipColumnsAdapter
 from jessiql.typing import SAModelOrAlias
+from .base import Operation
 
 
-class SelectOperation:
+class SelectOperation(Operation):
     """ Select operation: add columns to the statement
 
     Handles: QueryObject.select

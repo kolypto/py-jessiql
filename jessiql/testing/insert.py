@@ -1,7 +1,9 @@
+from typing import Union
+
 import sqlalchemy as sa
 
 
-def insert(connection: sa.engine.Connection, Model: sa.sql.Selectable, *values):
+def insert(connection: sa.engine.Connection, Model: Union[sa.sql.Selectable, type], *values):
     """ Helper: run a query to insert many rows of Model into a table using low-level SQL statement
 
     Example:
