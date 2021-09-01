@@ -16,27 +16,55 @@ from jessiql.typing import SAModelOrAlias
 
 
 class FilterOperation(Operation):
+    """ Filter: applies a filter condition
+
+    Handles: QueryObject.filter
+    When applied to a statement:
+    * Adds the WHERE clause
+    """
+
     def apply_to_statement(self, stmt: sa.sql.Select) -> sa.sql.Select:
-        stmt = stmt.filter(*(
+        """ Modify the Select statement: add the WHERE clause """
+        # Compile the conditions
+        conditions = (
             self._compile_condition(condition)
             for condition in self.query.filter.conditions
-        ))
+        )
+
+        # Add the WHERE clause
+        stmt = stmt.filter(*conditions)
 
         # Done
         return stmt
 
     def _compile_condition(self, condition: FilterExpressionBase) -> sa.sql.ColumnElement:
+        """ Generate a SQL filter expression for the condition
+
+        Args:
+            condition: a field expression (field == value) or a bool expression (x AND y AND z)
+        """
+        # Field expressions
         if isinstance(condition, FieldFilterExpression):
             return self._compile_field_condition(condition)
+        # Boolean expressions
         elif isinstance(condition, BooleanFilterExpression):
             return self._compile_boolean_conditions(condition)
+        # Surprised facial expressions
         else:
             raise NotImplementedError(repr(condition))
 
     def _compile_field_condition(self, condition: FieldFilterExpression) -> sa.sql.ColumnElement:
+        """ Generate an SQL statement for a field condition: e.g. "field == value"
+
+        A field expression is represented by a class that encapsulates the following syntax:
+
+            field operator value
+        """
         # Resolve column
         condition.property = get_field_for_filtering(condition, self.target_Model, where='filter')
         col, val = condition.property, condition.value
+
+        # Step 1. Prepare the column and the operand.
 
         # Case 1. Both column and value are arrays
         if condition.is_array and _is_array(val):
@@ -52,7 +80,7 @@ class FilterOperation(Operation):
             # Now, replace the `col` used in operations with this new coerced expression
             col = sa.cast(col, coerce_type)
 
-        # Done
+        # Step 2. Apply the operator.
         return self.use_operator(
             condition,
             col,  # column expression
@@ -60,32 +88,42 @@ class FilterOperation(Operation):
         )
 
     def _compile_boolean_conditions(self, condition: BooleanFilterExpression) -> sa.sql.ColumnElement:
+        """ Generate an SQL statement for a boolean expression: e.g. "x AND y AND z"
+
+        A boolean expression is represented by a class that encapsulates the following syntax:
+
+            operator ( expr, expr, expr )
+        """
         # "$not" is special
         if condition.operator == '$not':
+            # AND all clauses together
             criterion = sql_anded_together([
                 self._compile_condition(c)
                 for c in condition.clauses
             ])
+            # now negate all of them
             return sa.not_(criterion)
         # "$and", "$or", "$nor" share some steps so they're handled together
         else:
             # Compile expressions
             criteria = [self._compile_condition(c) for c in condition.clauses]
 
-            # Build an expression for the boolean operator
+            # Build an expression for $or and $nor
+            # "nor" will later be finalized with a negation
             if condition.operator in ('$or', '$nor'):
-                # for $nor, it will be negated later
                 cc = sa.or_(*criteria)
+            # Build an expression for $and
             elif condition.operator == '$and':
                 cc = sa.and_(*criteria)
+            # Oops
             else:
                 raise NotImplementedError(f'Unsupported boolean operator: {condition.operator}')
 
             # Put parentheses around it when there are multiple clauses
             cc = cc.self_group() if len(criteria) > 1 else cc
 
-            # for $nor, we promised to negate the result.
-            # We do it after enclosing it into parentheses
+            # Finalize $nor: negate the result
+            # We do it after it's enclosed into parentheses
             if condition.operator == '$nor':
                 return ~cc
 
@@ -93,9 +131,23 @@ class FilterOperation(Operation):
             return cc
 
     def use_operator(self, condition: FieldFilterExpression, column_expression: sa.sql.ColumnElement, value: sa.sql.ColumnElement) -> sa.sql.ColumnElement:
+        """ Given a field and a value, apply an operator
+
+        Args:
+            condition: The Field Expression class that we use
+            column_expression: The left operand
+            value: The right operand
+
+        Note that `column_expression` and `value` are likely different from what you have in `condition`:
+        this is because some they may be turned into expressions that support arrays and JSON fields!
+        """
+        # Validate: check that it makes sense
         self._validate_operator_argument(condition)
+
+        # Get the callable for the operator
         operator_lambda = self._get_operator_lambda(condition.operator, use_array=condition.is_array)
 
+        # Apply the operator
         return operator_lambda(
             column_expression,  # left operand
             value,  # right operand
@@ -103,15 +155,28 @@ class FilterOperation(Operation):
         )
 
     def _get_operator_lambda(self, operator: str, *, use_array: bool) -> callable:
+        """ Get a callable that implements the operator
+
+        Args:
+            operator: Operator name
+            use_array: Shall we use the array version of this operator?
+        """
+        # Find the operator
         try:
             if use_array:
                 return self.ARRAY_OPERATORS[operator]
             else:
                 return self.SCALAR_OPERATORS[operator]
+        # Operator not found
         except KeyError:
             raise exc.QueryObjectError(f'Unsupported operator: {operator}')
 
     def _validate_operator_argument(self, condition: FieldFilterExpression):
+        """ Validate or fail: that the operation and its arguments make sense
+
+        Raises:
+            exc.QueryObjectError
+        """
         operator = condition.operator
 
         # See if this operator requires array argument

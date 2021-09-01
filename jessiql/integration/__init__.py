@@ -1,1 +1,1 @@
-""" Integrations with other tools and frameworks """
+""" Use JessiQL with other frameworks """

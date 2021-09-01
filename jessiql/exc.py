@@ -4,14 +4,20 @@ class BaseJessiqlException(AssertionError):  # `AssertionError` for backwards-co
 
 
 class QueryObjectError(BaseJessiqlException):
-    """ Invalid input provided by the User """
+    """ Invalid input provided by the User
+
+    Reported when there's something wrong with the Query Object
+    """
 
     def __init__(self, err: str):
         super().__init__(f'Query object error: {err}')
 
 
 class InvalidColumnError(BaseJessiqlException):
-    """ Query mentioned an invalid column name """
+    """ Query mentioned an invalid column name
+
+    Reported when a column mentioned by name is not found on the SqlAlchemy model
+    """
 
     def __init__(self, model: str, column_name: str, where: str):
         self.model = model
@@ -22,7 +28,10 @@ class InvalidColumnError(BaseJessiqlException):
 
 
 class InvalidRelationError(InvalidColumnError):
-    """ Query mentioned an invalid relationship name """
+    """ Query mentioned an invalid relationship name
+
+    Reported when a relation mentioned by name is not found on the SqlAlchemy model
+    """
 
 
 

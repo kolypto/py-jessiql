@@ -1,25 +1,57 @@
+from typing import Optional
+
 import sqlalchemy as sa
 
 from jessiql.sautil.adapt import SimpleColumnsAdapter
-from jessiql.typing import SAAttribute
+from jessiql.typing import SAAttribute, SAModelOrAlias
+from jessiql.query_object import QueryObject
 
 from .base import Operation
 from .sort import get_sort_fields_with_direction
 
 
 class SkipLimitOperation(Operation):
-    _window_over_foreign_keys: list[SAAttribute] = None
+    """ Skip/Limit operation: pagination
+
+    Handles: QueryObject.skip, QueryObject.limit
+    When applied to a statement:
+    * Adds SKIP/LIMIT clauses
+
+    In paginate_over_foreign_keys() mode, uses a window function over a set of foreign keys:
+    this way every related object gets its own pagination!
+    """
+
+    def __init__(self, query: QueryObject, target_Model: SAModelOrAlias):
+        super().__init__(query, target_Model)
+        self._window_over_foreign_keys = None
+
+    __slots__ = '_window_over_foreign_keys',
+
+    # Enables pagination with a window function.
+    # Value: list of foreign keys attributes to iterate against
+    _window_over_foreign_keys: Optional[list[SAAttribute]]
 
     def paginate_over_foreign_keys(self, fk_columns: list[SAAttribute]):
+        """ Enable pagination over foreign keys
+
+        This is used for paginating related objects which are loaded with one query:
+        every parent object gets its own pagination window.
+
+        See: self._apply_window_over_foreign_key_pagination()
+        """
         self._window_over_foreign_keys = fk_columns
 
     def apply_to_statement(self, stmt: sa.sql.Select) -> sa.sql.Select:
+        """ Modify the Select statement: add SKIP/LIMIT clauses or PARTITION BY clause """
+        # When in window-function mode
         if self._window_over_foreign_keys:
             return self._apply_window_over_foreign_key_pagination(stmt, fk_columns=self._window_over_foreign_keys)
+        # When in SKIP/LIMIT mode
         else:
             return self._apply_simple_skiplimit_pagination(stmt)
 
     def _apply_simple_skiplimit_pagination(self, stmt: sa.sql.Select):
+        """ Pagination for the SKIP/LIMIT mode: add SKIP/LIMIT clauses """
         skip, limit = self.query.skip.skip, self.query.limit.limit
 
         if skip:

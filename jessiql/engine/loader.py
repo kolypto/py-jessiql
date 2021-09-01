@@ -27,6 +27,7 @@ class QueryLoaderBase:
 
     Operations, such as select, filter, sort, skip/limit, are out of scope here.
     """
+    __slots__ = ()
 
     def prepare_statement(self, stmt: sa.sql.Select) -> sa.sql.Select:
         """ Hook: prepare the SELECT statement before any operation is applied
@@ -67,8 +68,6 @@ class PrimaryQueryLoader(QueryLoaderBase):
 
     This loader is used for the primary model: the one at the top.
     """
-    __slots__ = ()
-
     def load_results(self, stmt: sa.sql.Select, connection: sa.engine.Connection) -> abc.Iterator[SARowDict]:
         # TODO: use fetchmany() or partitions()
         #   See how jessiql behaves with huge result sets. Make sure it's able to iterate, not load everything into memory.
@@ -85,11 +84,11 @@ class RelatedQueryLoader(QueryLoaderBase):
 
     This loader is used to populate loaded models with related fields.
     """
-    __slots__ = 'loader',
-
     def __init__(self, relation: SelectedRelation, source_Model: SAModelOrAlias, target_Model: SAModelOrAlias):
         # Relies on `JSelectInLoader`: implementation borrowed from SqlAlchemy's SelectInLoader
         self.loader = JSelectInLoader(source_Model, relation.property, target_Model)
+
+    __slots__ = 'loader',
 
     def for_states(self, source_states: list[SARowDict]):
         # The list of states this loader is going to populate with related fields

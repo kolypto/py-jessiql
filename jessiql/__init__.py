@@ -6,7 +6,7 @@ from .query_object import QueryObject, QueryObjectDict
 from . import query_object
 from . import exc
 
-# TODO: write comments for: operations, testing, sautil
+
 # TODO: README.md
 # TODO: update SqlAlchemy, see if any changes can/should be made to JSelectInLoader
 # TODO: make MyPy happy

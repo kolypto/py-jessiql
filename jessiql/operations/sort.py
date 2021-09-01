@@ -16,7 +16,15 @@ from jessiql.typing import SAModelOrAlias
 
 
 class SortOperation(Operation):
+    """ Sort operation: define the ordering of result rows
+
+    Handles: QueryObject.sort
+    When applied to a statement:
+    * Adds ORDER BY with columns and sorting defined by the user
+    """
+
     def apply_to_statement(self, stmt: sa.sql.Select) -> sa.sql.Select:
+        """ Modify the Select statement: add ORDER BY clause """
         # Sort fields
         stmt = stmt.order_by(*self.compile_columns())
 
@@ -24,13 +32,24 @@ class SortOperation(Operation):
         return stmt
 
     def compile_columns(self) -> abc.Iterator[sa.sql.ColumnElement]:
+        """ Generate the list of columns, sorted asc()/desc(), to be used in the query """
         yield from get_sort_fields_with_direction(self.query.sort, self.target_Model, where='sort')
 
 
 def get_sort_fields_with_direction(sort: SortQuery, Model: SAModelOrAlias, *, where: str) -> abc.Iterator[sa.sql.ColumnElement]:
+    """ Get the list of expressions to sort by
+
+    Args:
+        sort: QueryObject.sort
+        Model: the model to resolve the fields against
+        where: location identifier for error reporting
+    """
+    # Go over every field provided by the user
     for field in sort.fields:
+        # Resolve its name
         attribute = resolve_column_by_name(field.name, Model, where=where)
 
+        # Make a sorting expression, depending on the direction
         if field.direction == SortingDirection.DESC:
             yield attribute.desc().nullslast()
         else:

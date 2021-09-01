@@ -6,14 +6,15 @@ import sqlalchemy as sa
 # Annotation for SqlAlchemy models
 SAModel = type
 
-# Annotation for SqlAlchemy models and aliased classes
+# Annotation for SqlAlchemy models or aliased classes
 SAModelOrAlias = Union[SAModel, sa.orm.util.AliasedClass]
 
-# Annotation for SqlAlchemy instances
+# Annotation for SqlAlchemy instances (objects)
 SAInstance = object
 
-# Annotation for dict rows
+# Annotation for dict rows (result rows returned as dicts)
 SARowDict = dict
 
 # An SqlAlchemy attribute
+# That is, the instrumented attribute you get when accessing <model>.<attribute>
 SAAttribute = Union[sa.orm.InstrumentedAttribute, sa.orm.MapperProperty]  # type: ignore[name-defined]

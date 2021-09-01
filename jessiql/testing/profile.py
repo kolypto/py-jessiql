@@ -34,7 +34,13 @@ def timeit(arg):
 
 
 def timeit_decorator(f):
-    """ A decorator that times a function and outputs to the logger """
+    """ A decorator that times a function and outputs to the logger
+
+    Example:
+        @timeit
+        def func(...):
+            ...
+    """
     @wraps(f)
     def measure_time(*args, **kwargs):
         with timeit_contextmanager(str(f)):
@@ -44,7 +50,12 @@ def timeit_decorator(f):
 
 @contextmanager
 def timeit_contextmanager(name):
-    """ A context manager that times the code and logs the result """
+    """ A context manager that times the code and logs the result
+
+    Example:
+        with timeit(...):
+            ...
+    """
     t_start = monotonic()
     try:
         yield

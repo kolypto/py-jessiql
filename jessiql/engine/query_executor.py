@@ -35,7 +35,7 @@ class QueryExecutor:
     # The target model to execute the Query against
     Model: SAModelOrAlias
 
-    # Load path: (Model, attribute, ...) path to the current model
+    # Load path: (Model, 'attribute', ...) path to the current model
     # Examples:
     # > (User,)
     # > (User, 'articles', Article)
@@ -43,46 +43,60 @@ class QueryExecutor:
     # Use it in your customization handler to know where you are.
     load_path: LoadPath
 
-    # Query customization handler.
-    # This is your last chance to make changes to the query.
-    # Modifiable.
+    # Query customization handlers: functions to alter `sa.sql.Select` statement.
+    # This is your last chance to make changes to the statement.
+    #
+    # Mutable list: you can append your own custom handlers.
+    # NOTE: your function will be called for the parent statement and related statements as well!
+    #   It should be ready to inspect the `QueryExecutor.path` to find out where it is!
+    #
+    # Callback args:
+    #   (self, statement)
     # Example usage: provide additional filtering, e.g. for security
     # Example usage:
     #   @query.customize_statements.append
-    #   def security_filter(query: QueryExecutor, statement: sa.sql.Select)
-    # Arguments: (self, statement)
+    #   def security_filter(query: QueryExecutor, stmt: sa.sql.Select):
+    #       if query.path == (User,):
+    #           return stmt.filter(...)
     customize_statements: list[CustomizeStatementCallable]
 
     # Results customization handler.
     # This is your last chance to catch results from every individual query.
-    # Modifiable.
+    #
+    # Mutable list: you can append your own custom handlers.
+    # NOTE: your function will be called for the parent statement and related statements as well!
+    #   It should be ready to inspect the `QueryExecutor.path` to find out where it is!
+    #
+    # Callback args:
+    #   (self, list[row dict])
     # Example usage: pre-process loaded related objects
-    # Arguments: (self, statement)
+    # Example usage:
+    #   @query.customize_results.append
+    #   def preprocess_results(query: QueryExecutor, rows: list[dict]) -> list[dict]:
     customize_results: list[CustomizeResultsCallable]
 
-    # Loader used to fetch results
-    # Typically, a PrimaryQueryLoader or a RelatedQueryLoader
-    # Is replaced when for_relation() is used
+    # Loader used to fetch results from the statement.
+    # Typically,
+    # * a PrimaryQueryLoader (for the root query), or
+    # * a RelatedQueryLoader (that can populate objects with related fields)
+    # Is replaced when _for_relation() is used
     loader: QueryLoaderBase
 
     # Child executors for related objects
-    related_executors: dict[str, QueryExecutor] = None
+    # For instance, when "join" is used, holds a QueryExecutor for every relationship by name
+    related_executors: dict[str, QueryExecutor]
 
     def __init__(self, query: QueryObject, Model: SAModelOrAlias):
         """ Initialize a Query Executor for the given Query Object
 
         Args:
             query: The Query Object to execute
-            Model: The SqlAlchemt Model class to execute the query against
+            Model: The SqlAlchemy Model class to execute the query against
         """
         # The query and the model to query against
         assert isinstance(query, QueryObject)
         self.query = query
         self.Model = Model
-
-        # Load path
-        # May be modified by for_relation()
-        self.load_path = (unaliased_class(Model),)
 
         # Customization handlers
         # May be modified by for_relation()
@@ -94,6 +108,10 @@ class QueryExecutor:
         self.filter_op = self.FilterOperation(query, Model)
         self.sort_op = self.SortOperation(query, Model)
         self.skiplimit_op = self.SkipLimitOperation(query, Model)
+
+        # Load path
+        # May be modified by for_relation()
+        self.load_path = (unaliased_class(Model),)
 
         # Init loader
         # May be replaced by for_relation()
@@ -116,11 +134,20 @@ class QueryExecutor:
             for relation in self.query.select.relations.values()
         }
 
+    __slots__ = (
+        'query', 'Model', 'load_path',
+        'customize_statements', 'customize_results',
+        'select_op', 'filter_op', 'sort_op', 'skiplimit_op',
+        'loader', 'related_executors',
+    )
+
     def _for_relation(self, source_executor: QueryExecutor, relation: SelectedRelation):
         """ Init: Query Executor for a related object
 
-        This function is called after __init__() for related executors: that is, executors that execute join operation
-        and load related objects.
+        This function is called after __init__() for related executors.
+        It replaces the load path, the loader, and stuff.
+
+        Perhaps, this is sub-optimal to initialize parameters twice. But the code is more readable this way.
 
         Args:
             source_executor: The parent executor
@@ -130,15 +157,16 @@ class QueryExecutor:
         self.load_path = source_executor.load_path + (relation.name, unaliased_class(self.Model))
 
         # Replace the loader: use a Related Loader that can populate objects with related fields
-        source_Model = source_executor.Model
-        self.loader = self.RelatedQueryLoader(relation, source_Model, self.Model)
+        self.loader = self.RelatedQueryLoader(relation, source_executor.Model, self.Model)
 
-        # SkipLimit needs to enter a special pagination mode:
-        # ordinary SkipLimit would ruin result sets, so it would use a window function to restrict results per main object.
+        # SkipLimit needs to enter a special pagination mode: window function pagination mode.
+        # If it used SKIP/LIMIT, it would ruin result sets because "LIMIT 50" applies to the whole result set!
+        # Whereas a window function limit would be able to restrict results per main object.
         self.skiplimit_op.paginate_over_foreign_keys(relation.property.remote_side)
 
         # Copy customization handlers.
-        # The function should be capable of dealing with `load_path` and thus handle every special case
+        # These functions should be prepared in such a way that it inspects the `load_path` argument
+        # and thus handles any related model no matter how deep down the tree it is.
         self.customize_statements = source_executor.customize_statements
         self.customize_results = source_executor.customize_results
 
@@ -148,15 +176,16 @@ class QueryExecutor:
     def fetchall(self, connection: sa.engine.Connection) -> list[SARowDict]:
         """ Execute all queries and fetch result rows, including relations.
 
-        This query would load primary objects on the current level, then collect these objects as "states", and
-        recursively execute related Query Executors to fetch relations.
-        They, in turn, would load related objects on their levels.
+        This query would:
+        1. Load primary objects on the current level
+        2. Collect these objects as "states" (e.g. objects with foreign key values)
+        3. Recursively execute related Query Executors to fetch relations
+        4. They, in turn would load related objects on their levels
         """
         # Load all results: on the current level
         states = list(self._load_results(connection))
 
-        # Load all relations:
-        # gather objects from the current level as "states",
+        # Load all relations, using objects of the current level as "states"
         self._load_relations(connection, states)
 
         # Customize results: execute every handler
@@ -179,9 +208,9 @@ class QueryExecutor:
     SkipLimitOperation = operations.SkipLimitOperation
 
     def _load_results(self, connection: sa.engine.Connection) -> abc.Iterator[SARowDict]:
-        """ Build a SELECT statement and fetch results
+        """ Build a SELECT statement and fetch results for the current level
 
-        For the current level only; no relations are loaded
+        Only this level. No relationships are loaded.
         """
         # Build the SELECT statement
         stmt = self.statement()
@@ -190,7 +219,7 @@ class QueryExecutor:
         yield from self.loader.load_results(stmt, connection)
 
     def _load_relations(self, connection: sa.engine.Connection, states: list[SARowDict]):
-        """ Load relations for the given states of this level
+        """ Load relations for the given states of the current level
 
         Args:
             connection: The connection to use
@@ -211,15 +240,15 @@ class QueryExecutor:
         Build a statement that loads objects on the current level only: not for relations.
 
         NOTE that it may be very inconvenient to inspect/modify the query: some advanced operations, like skip/limit,
-        may use subqueries and thus make it impossible to apply further filtering.
+        may wrap it into a subquery and thus make it impossible to apply further filtering.
 
-        Use `customize_statements()` to catch the statement while it's still fresh.
+        Use `self.customize_statements` to catch the statement while it's still fresh.
         """
         # Prepare a boilerplate statement for the current model
         # It has no selected fields yet.
         stmt = sa.select([]).select_from(self.Model)
 
-        # Apply operations to this statement
+        # Apply operations to this statement: select, filter, sort, skiplimit, etc, and customization too.
         # This is where more clauses are applied.
         stmt = self._apply_operations_to_statement(stmt)
 
@@ -229,7 +258,7 @@ class QueryExecutor:
     def all_statements(self) -> abc.Iterator[sa.sql.Select]:
         """ Build SQL statements for this model and all related objects
 
-        This method is mainly used for debugging to see what SQL is generated.
+        This method is mainly used for debugging to see the generated SQL.
         """
         # This model
         yield self.statement()
@@ -249,7 +278,7 @@ class QueryExecutor:
         stmt = self.sort_op.apply_to_statement(stmt)
 
         # Customization handlers: apply
-        # This is done before `skiplimit` spoils the query
+        # This is done before `skiplimit` spoils the query with its subqueries.
         for handler in self.customize_statements:
             stmt = handler(self, stmt)
 

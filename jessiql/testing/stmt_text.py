@@ -1,4 +1,4 @@
-""" Get a statement text """
+""" Convert a SA SQL statement to readable text """
 import re
 import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql
@@ -39,6 +39,7 @@ def selected_columns(stmt_str: str):
 
 # the whole SELECT <...> clause
 SELECTED_COLUMNS_REX = re.compile(r'^SELECT (.*?)\s+FROM')
+
 # extract column names, without 'as'
 EXTRACT_COLUMN_NAMES = re.compile(r'(\S+?)(?: AS \w+)?(?:,|$)')
 
