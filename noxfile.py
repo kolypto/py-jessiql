@@ -3,7 +3,7 @@ import nox.sessions
 
 PYTHON_VERSIONS = ['3.8', '3.9']
 SQLALCHEMY_VERSIONS = [
-    *(f'1.4.{x}' for x in range(13, 1 + 13)),
+    *(f'1.4.{x}' for x in range(13, 1 + 23)),
 ]
 
 

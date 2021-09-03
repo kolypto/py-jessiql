@@ -10,7 +10,6 @@ from .features.cursor import QueryPage, PageLinks
 
 
 # TODO: README.md
-# TODO: update SqlAlchemy, see if any changes can/should be made to JSelectInLoader
 # TODO: make MyPy happy
 
 # TODO: a tool to apply JessiQL Query Object to plain lists & dicts (to fake behavior for non-JessiQL APIs).
