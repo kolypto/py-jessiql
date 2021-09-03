@@ -9,17 +9,18 @@ from jessiql.sautil.adapt import SimpleColumnsAdapter
 from jessiql.typing import SAModelOrAlias, SARowDict
 
 
-# TODO: Based on SqlAlchemy v1.4.15. Update SqlAlchemy, see if any changes can/should be backported.
-#   This is a rolling TODO.
+# TODO: Based on SqlAlchemy v1.4.23. Update SqlAlchemy, see if any changes can/should be backported.
+#   This is a rolling to do. We need to keep updating.
 
 
-# Inspired by SelectInLoader._load_for_path() , SqlAlchemy v1.4.15
+# Inspired by SelectInLoader._load_for_path()
 # With some differences;
 # * We ignore the `load_with_join` branch because we can ensure all FKs are loaded
 # * We do no streaming: all parent FKs are available at once, so we don't care about `order_by`s
 # * We don't use baked queries for now
 # * Some customizations are marked with [CUSTOMIZED]
 # * Some additions are marked with [ADDED]
+# * Anchor lines in the original SqlAlchemy code marked [o] with original code samples provided
 class JSelectInLoader:
     """ Loader for related objects, borrowing the approach from SqlAlchemy's SelectInLoader
 
@@ -63,7 +64,8 @@ class JSelectInLoader:
         'our_states', 'none_states',
     )
 
-    # Inspired by SelectInLoader._load_for_path(), part 1, SqlAlchemy v1.4.15
+    # Inspired by SelectInLoader._load_for_path(), part 1
+    # [o] def _load_for_path(...)
     def prepare_states(self, states: list[SARowDict]):
         """ Get the states to be populated, gather information from them
 
@@ -76,11 +78,13 @@ class JSelectInLoader:
         # This value is set to `True` when either `relationship(omit_join=False)` was set, or when the left mapper entities
         # do not have FK keys loaded. We do not want these complications since we control how things are loaded.
         # SelectInLoader makes a larger JOIN query in such a case. We don't want that.
+        # [ADDED]
         assert not query_info.load_with_join
 
         # Okay, the `load_with_join` case is excluded.
         # The next thing that controls how a query should be built is `query_info.load_only_child`:
         # it's set to `True` for MANYTOONE relationships, and is `False` for other relationships: ONETOMANY and MANYTOMANY
+        # [ADDED]
         assert isinstance(query_info.load_only_child, bool)
 
         # This is the case of MANYTOONE.
@@ -91,16 +95,20 @@ class JSelectInLoader:
         #       we have a list of `Article[]` where `Article.user_id` is loaded
         #       we'll need to load `User[]` where `User.id = Article.user_id`
         if query_info.load_only_child:
+            # [o] our_states = collections.defaultdict(list)
             self.our_states = collections.defaultdict(list)
             self.none_states = []
 
+            # [o] for state, overwrite in states:
             for state_dict in states:
+                # [o] related_ident = tuple(...)
                 related_ident = tuple(
                     state_dict[lk.key]
                     for lk in query_info.child_lookup_cols
                 )
 
                 # organize states into lists keyed to particular foreign key values.
+                # [o] if None not in related_ident:
                 if None not in related_ident:
                     self.our_states[related_ident].append(state_dict)
                 else:
@@ -114,6 +122,7 @@ class JSelectInLoader:
         #   User.articles:
         #       we have a list of `User[]` where `User.id` is loaded
         #       we'll need to load `Article[]` where `Article.user_id = User.id`
+        # [o] if not query_info.load_only_child:
         if not query_info.load_only_child:
             # If it fails to find a column in `state`, it means the `state` does not have a primary key loaded
             self.our_states = [
@@ -121,15 +130,22 @@ class JSelectInLoader:
                 for state in states
             ]
 
-    # Inspired by SelectInLoader._load_for_path(), part 2, SqlAlchemy v1.4.15
+    # Inspired by SelectInLoader._load_for_path(), part 2
+    # [o] def _load_for_path(...)
     def prepare_query(self, q: sa.sql.Select) -> sa.sql.Select:
         """ Prepare the statement for loading: add columns to select, add filter condition """
         # [ADDED] Adapt pk_cols
+        # [o] pk_cols = query_info.pk_cols
         adapter = SimpleColumnsAdapter(self.target_model)
         pk_cols = adapter.replace_many(self.query_info.pk_cols)
 
+        # [o] bundle_ent = orm_util.Bundle("pk", *pk_cols)
+        # [o] bundle_sql = bundle_ent.__clause_element__()
+        # [o] q = Select._create_raw_select(
+        # [o] _raw_columns=[bundle_sql, entity_sql],
         q = q.add_columns(*pk_cols)  # [CUSTOMIZED]
 
+        # [o] q = q.filter(in_expr.in_(sql.bindparam("primary_keys")))
         q = q.filter(
             adapter.replace(  # [ADDED] adapter
                 self.query_info.in_expr.in_(sa.sql.bindparam("primary_keys"))
@@ -148,68 +164,100 @@ class JSelectInLoader:
     # Chunk size: how many related objects to load at once with one SQL IN(...) query
     CHUNKSIZE = sa.orm.strategies.SelectInLoader._chunksize
 
-    # Inspired by SelectInLoader._load_via_parent() , SqlAlchemy v1.4.15
+    # Inspired by SelectInLoader._load_via_parent()
+    # [o] def _load_via_parent(...):
     def _load_via_parent(self, connection: sa.engine.Connection, our_states: list[SARowDict], q: sa.sql.Select) -> abc.Iterator[SARowDict]:
+        # [o] uselist = self.uselist
         uselist: bool = self.relation_property.uselist
+        # [o] _empty_result = () if uselist else None
         _empty_result = lambda: [] if uselist else None
 
+        # [o]
         while our_states:
+            # [o]
             chunk = our_states[0: self.CHUNKSIZE]
             our_states = our_states[self.CHUNKSIZE:]
 
+            # [o]
             primary_keys = [
                 key[0] if self.query_info.zero_idx else key
                 for key, state_dict in chunk
             ]
 
+            # [o]
             data = collections.defaultdict(list)
             for k, v in itertools.groupby(
+                    # [o] context.session.execute(
+                    # [o] q, params={"primary_keys": primary_keys}
                     # [CUSTOMIZED]
                     connection.execute(q, {"primary_keys": primary_keys}).mappings(),#.unique()
                     lambda row: get_foreign_key_tuple(row, self.query_info),
             ):
-                data[k].extend(
-                    map(dict, v)  # [CUSTOMIZED] convert MappingResult to an actual, mutable dict() to which we'll add keys
-                )
+                # [o] data[k].extend(vv[1] for vv in v)
+                # [CUSTOMIZED] convert MappingResult to an actual, mutable dict() to which we'll add keys
+                data[k].extend(map(dict, v))
 
+
+            # [o] for key, state, state_dict, overwrite in chunk:
             for key, state_dict in chunk:
+                # [o]
                 collection = data.get(key, _empty_result())
 
+                # [o]
                 if not uselist and collection:
                     if len(collection) > 1:
                         sa.util.warn(f"Multiple rows returned with uselist=False for attribute {self.relation_property}")
+
+                    # [o] state.get_impl(self.key).set_committed_value(state, state_dict, collection[0])
                     state_dict[self.key] = collection[0]  # [CUSTOMIZED]
                 else:
+                    # [o] state.get_impl(self.key).set_committed_value(state, state_dict, collection)
                     state_dict[self.key] = collection  # [CUSTOMIZED]
 
                 # [ADDED] Return loaded objects
                 yield from collection
 
-    # Inspired by SelectInLoader._load_via_child() , SqlAlchemy v1.4.15
+    # Inspired by SelectInLoader._load_via_child()
+    # [o] def _load_via_child(self, our_states, none_states, query_info, q, context):
     def _load_via_child(self, connection: sa.engine.Connection, our_states: dict[tuple, list], none_states: list[dict], q: sa.sql.Select) -> abc.Iterator[SARowDict]:
+        # [o] uselist = self.uselist
         uselist: bool = self.relation_property.uselist
 
         # this sort is really for the benefit of the unit tests
+        # [o] our_keys = sorted(our_states)
         our_keys = sorted(our_states)
+        # [o]
         while our_keys:
+            # [o] chunk = our_keys[0 : self._chunksize]
+            # [o] our_keys = our_keys[self._chunksize :]
             chunk = our_keys[0: self.CHUNKSIZE]
             our_keys = our_keys[self.CHUNKSIZE:]
 
+            # [o]
             data = {
                 get_primary_key_tuple(self.target_mapper, row): dict(row)  # [CUSTOMIZED] Convert mappings into mutable dicts
+                # [o] for k, v in context.session.execute(
                 for row in connection.execute(q, {"primary_keys": [
                     key[0] if self.query_info.zero_idx else key
                     for key in chunk
                 ]}).mappings()
             }
 
+            # [o]
             for key in chunk:
+                # [o]
                 related_obj = data.get(key, None)
+
+                # [o] for state, dict_, overwrite in our_states[key]:
                 for state_dict in our_states[key]:
+                    # [o] state.get_impl(self.key).set_committed_value(
+                    # [o]     related_obj if not uselist else [related_obj],
                     state_dict[self.key] = related_obj if not uselist else [related_obj]
 
             # populate none states with empty value / collection
+            # [o] for state, dict_, overwrite in none_states:
             for state_dict in none_states:
+                # [o] state.get_impl(self.key).set_committed_value(state, dict_, None)
                 state_dict[self.key] = None
 
             # [ADDED] Return loaded objects
