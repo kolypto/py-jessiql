@@ -31,9 +31,9 @@ jobs:
     - uses: actions/cache@v2
       with:
         path: ./.nox/  # what we cache: nox virtualenv (they're expensive)
-        key: ${{ runner.os }}-nox-2-${{ matrix.python-version }}-${{ hashFiles('**/pyproject.toml', '**/noxfile.py') }}  # cache key
+        key: ${{ runner.os }}-nox-1-${{ matrix.python-version }}-${{ hashFiles('**/pyproject.toml', '**/noxfile.py') }}  # cache key
         restore-keys: |
-          ${{ runner.os }}-nox-2-${{ matrix.python-version }}-
+          ${{ runner.os }}-nox-1-${{ matrix.python-version }}-
     - run: pip install nox
     - run: nox --report nox-report.json
 
