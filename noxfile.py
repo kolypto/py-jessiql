@@ -15,14 +15,14 @@ nox.options.sessions = [
 
 
 @nox.session(python=PYTHON_VERSIONS)
-def tests(session: nox.sessions.Session, sqlalchemy=None):
+def tests(session: nox.sessions.Session, *, versions: list[str] = None):
     """ Run all tests """
     session.install('poetry')
     session.run('poetry', 'install')
     
     # Specific package versions
-    if sqlalchemy:
-        session.install(f'sqlalchemy=={sqlalchemy}')
+    if versions:
+        session.install(*versions)
 
     # Test
     session.run('pytest', 'tests/', '--ignore=tests/test_mypy.py', '--cov=myproject')
@@ -32,4 +32,4 @@ def tests(session: nox.sessions.Session, sqlalchemy=None):
 @nox.parametrize('sqlalchemy', SQLALCHEMY_VERSIONS)
 def tests_sqlalchemy(session: nox.sessions.Session, sqlalchemy):
     """ Test against a specific SqlAlchemy version """
-    tests(session, sqlalchemy)
+    tests(session, versions=[f'sqlalchemy=={sqlalchemy}'])
