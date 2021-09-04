@@ -25,7 +25,7 @@ def tests(session: nox.sessions.Session, sqlalchemy=None):
         session.install(f'sqlalchemy=={sqlalchemy}')
 
     # Test
-    session.run('pytest', 'tests/', '--cov=myproject')
+    session.run('pytest', 'tests/', '--ignore=tests/test_mypy.py', '--cov=myproject')
 
 
 @nox.session(python=PYTHON_VERSIONS[-1])
