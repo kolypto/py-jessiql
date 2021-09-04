@@ -5,7 +5,7 @@ from ..query_object_argument import has_query_argument
 from .defs import QueryFieldInfo
 
 
-def query_every_field(field_name: str, field_def: graphql.type.definition.GraphQLField, path: tuple[str]) -> QueryFieldInfo:
+def query_every_field(field_name: str, field_def: graphql.type.definition.GraphQLField, path: tuple[str, ...]) -> QueryFieldInfo:
     """ Query Field func: include all fields as either 'select' or 'join'
 
     Every field is included as Query Object 'select',

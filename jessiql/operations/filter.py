@@ -78,12 +78,12 @@ class FilterOperation(Operation):
             # Doc: "Suggest a type for a `coerced` Python value in an expression."
             coerce_type = col.type.coerce_compared_value('=', val)  # HACKY: use sqlalchemy type coercion
             # Now, replace the `col` used in operations with this new coerced expression
-            col = sa.cast(col, coerce_type)
+            col = sa.cast(col, coerce_type)  # type: ignore[type-var, assignment]
 
         # Step 2. Apply the operator.
         return self.use_operator(
             condition,
-            col,  # column expression
+            col,  # type: ignore[arg-type]  # column expression
             val,  # value expression
         )
 
@@ -120,7 +120,7 @@ class FilterOperation(Operation):
                 raise NotImplementedError(f'Unsupported boolean operator: {condition.operator}')
 
             # Put parentheses around it when there are multiple clauses
-            cc = cc.self_group() if len(criteria) > 1 else cc
+            cc = cc.self_group() if len(criteria) > 1 else cc  # type: ignore[assignment]
 
             # Finalize $nor: negate the result
             # We do it after it's enclosed into parentheses
@@ -154,7 +154,7 @@ class FilterOperation(Operation):
             condition.value  # original value
         )
 
-    def _get_operator_lambda(self, operator: str, *, use_array: bool) -> callable:
+    def _get_operator_lambda(self, operator: str, *, use_array: bool) -> abc.Callable[[sa.sql.ColumnElement, sa.sql.ColumnElement, Any], sa.sql.ColumnElement]:
         """ Get a callable that implements the operator
 
         Args:

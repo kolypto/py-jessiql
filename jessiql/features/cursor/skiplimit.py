@@ -53,7 +53,7 @@ class CursorLimitOperation(SkipLimitOperation):
     # Only becomes available after some data rows have been returned.
     cursor_impl: Optional[CursorImplementation]
 
-    def for_query(self, query_executor: Query):
+    def for_query(self, query_executor: Query):  # type: ignore[override]
         # Parse the cursor
         try:
             self.cursor_type, self.cursor_value = cursor_value_input(self.query)
@@ -64,7 +64,7 @@ class CursorLimitOperation(SkipLimitOperation):
         self.cursor_impl = None
 
         # Register a function that will analyze result sets
-        @query_executor.customize_results.append
+        @query_executor.customize_results.append  # type: ignore[arg-type]
         def inspect_final_row(query_executor: Query, rows: list[dict]):
             self.cursor_impl = self.cursor_type.init_for_data_rows(self.cursor_value, query_executor, rows)
             return rows
@@ -148,4 +148,4 @@ def cursor_value_input(query: QueryObject) -> tuple[type[CursorImplementation], 
         cursor_type = get_cursor_impl(cursor_raw_value)
         cursor_value = cursor_type.CursorData.decode(cursor_raw_value)
 
-    return cursor_type, cursor_value
+    return cursor_type, cursor_value  # type: ignore[return-value]

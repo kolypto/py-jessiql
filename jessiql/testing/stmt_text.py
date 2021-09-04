@@ -5,7 +5,7 @@ from sqlalchemy.dialects import postgresql
 
 
 # The dialect to use for compiling statements
-DEFAULT_DIALECT: sa.engine.interfaces.Dialect = postgresql.dialect()
+DEFAULT_DIALECT: sa.engine.interfaces.Dialect = postgresql.dialect()  # type: ignore[misc]
 
 
 def stmt2sql(stmt: sa.sql.ClauseElement, dialect: sa.engine.interfaces.Dialect = None) -> str:
@@ -13,7 +13,7 @@ def stmt2sql(stmt: sa.sql.ClauseElement, dialect: sa.engine.interfaces.Dialect =
     # See: http://stackoverflow.com/a/4617623/134904
     # This intentionally does not escape values!
     query = stmt.compile(dialect=dialect or DEFAULT_DIALECT)
-    return _insert_query_params(query.string, query.params)
+    return _insert_query_params(query.string, query.params)  # type: ignore[arg-type]
 
 
 def selected_columns(stmt_str: str):
@@ -30,11 +30,11 @@ def selected_columns(stmt_str: str):
     if not m:
         return set()
 
-    selected_columns_str = m.group(1)
+    selected_columns_str: str = m.group(1)
 
     # Match results
-    m = EXTRACT_COLUMN_NAMES.findall(selected_columns_str)
-    return frozenset(m)
+    results = EXTRACT_COLUMN_NAMES.findall(selected_columns_str)
+    return frozenset(results)
 
 
 # the whole SELECT <...> clause

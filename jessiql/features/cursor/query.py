@@ -13,4 +13,4 @@ class QueryPage(Query):
 
         These values are opaque cursors that you can feed to "limit" to get to the corresponding page
         """
-        return self.skiplimit_op.get_page_links()
+        return self.skiplimit_op.get_page_links()  # type: ignore[attr-defined]

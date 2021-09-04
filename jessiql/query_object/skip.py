@@ -19,7 +19,7 @@ class SkipQuery(OperationInputBase):
     page: Optional[str]
 
     @classmethod
-    def from_query_object(cls, skip: Optional[Union[int, str]]):
+    def from_query_object(cls, skip: Optional[Union[int, str]]):  # type: ignore[override]
         # Check types:
         if skip is None:
             return cls(skip=None, page=None)
@@ -30,5 +30,5 @@ class SkipQuery(OperationInputBase):
         else:
             raise exc.QueryObjectError(f'"skip" must be an integer or a cursor')
 
-    def export(self) -> Optional[int]:
+    def export(self) -> Optional[Union[int, str]]:
         return self.skip or self.page

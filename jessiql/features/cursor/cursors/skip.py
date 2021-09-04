@@ -50,6 +50,7 @@ class SkipCursor(CursorImplementation[SkipPageInfo, SkipCursorData]):
     def generate_cursor_links(self, skip: int, limit: int) -> PageLinks:
         """ Generate links to next and previous page """
         # Prepare the prev page link
+        prev: Optional[str]
         if skip <= 0:
             prev = None
         else:
@@ -59,6 +60,7 @@ class SkipCursor(CursorImplementation[SkipPageInfo, SkipCursorData]):
             ).encode()
 
         # Prepare the next page link
+        next: Optional[str]
         if self.page_info.has_next_page:
             next = SkipCursorData(
                 skip=skip + limit,
@@ -71,13 +73,14 @@ class SkipCursor(CursorImplementation[SkipPageInfo, SkipCursorData]):
         return PageLinks(prev=prev, next=next)
 
     @classmethod
-    def apply_to_statement(cls, query: QueryObject, target_Model: SAModelOrAlias, stmt: sa.sql.Select, skip: int, limit: int, cursor: Optional[CursorData]) -> sa.sql.Select:
+    def apply_to_statement(cls, query: QueryObject, target_Model: SAModelOrAlias, stmt: sa.sql.Select, skip: int, limit: int, cursor: Optional[SkipCursorData]) -> sa.sql.Select:
         # We will always load one more row to check if there's a next page
         return stmt.offset(skip).limit(limit + 1)
 
     @classmethod
-    def inspect_data_rows(cls, cursor_value: Optional[SkipCursorData], query_executor: Query, rows: list[SARowDict]) -> Optional[SkipPageInfo]:
+    def inspect_data_rows(cls, cursor_value: Optional[SkipCursorData], query_executor: Query, rows: list[SARowDict]) -> SkipPageInfo:
         # Decode cursor
+        limit: Optional[int]
         if cursor_value is not None:
             limit = cursor_value.limit
         else:
@@ -85,7 +88,7 @@ class SkipCursor(CursorImplementation[SkipPageInfo, SkipCursorData]):
 
         # No limit? No inspection
         if limit is None:
-            return None
+            return SkipPageInfo(has_next_page=False)
 
         # Do we have a next page?
         # If limit is set, we always load one more row to check if there's a next page

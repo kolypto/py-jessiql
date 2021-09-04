@@ -23,7 +23,7 @@ from .base import CursorImplementation, PageLinks
 class KeysetPageInfo:
     """ Page info for the "keyset" cursor """
     # Column names that participate in the pagination
-    column_names: tuple[str]
+    column_names: tuple[str, ...]
 
     # Sort direction: ASC? or DESC?
     sort_asc: bool
@@ -52,7 +52,7 @@ class KeysetCursorData(NamedTuple):
 
     # List of columns that are used for pagination.
     # Is only used to check that the user isn't tampering with request sorting
-    cols: tuple[str]
+    cols: tuple[str, ...]
 
     # The operation to use for comparing the tuple: '>' or '<'
     op: str
@@ -115,25 +115,27 @@ class KeysetCursor(CursorImplementation[KeysetPageInfo, KeysetCursorData]):
         page_info = self.page_info
 
         # Prepare the prev page link
+        prev: Optional[str]
         if page_info.has_prev_page:
             prev = KeysetCursorData(
                 skip=max(skip - limit, 0),
                 limit=limit,
                 cols=page_info.column_names,
                 op='<' if page_info.sort_asc else '>',
-                val=page_info.first_tuple,
+                val=page_info.first_tuple,  # type: ignore[arg-type]
             ).encode()
         else:
             prev = None
 
         # Prepare the next page link
+        next: Optional[str]
         if page_info.has_next_page:
             next = KeysetCursorData(
                 skip=skip + limit,
                 limit=limit,
                 cols=page_info.column_names,
                 op='>' if page_info.sort_asc else '<',
-                val=page_info.last_tuple,
+                val=page_info.last_tuple,  # type: ignore[arg-type]
             ).encode()
         else:
             next = None
@@ -141,7 +143,7 @@ class KeysetCursor(CursorImplementation[KeysetPageInfo, KeysetCursorData]):
         return PageLinks(prev=prev, next=next)
 
     @classmethod
-    def apply_to_statement(cls, query: QueryObject, target_Model: SAModelOrAlias, stmt: sa.sql.Select, skip: int, limit: int, cursor: Optional[CursorData]) -> sa.sql.Select:
+    def apply_to_statement(cls, query: QueryObject, target_Model: SAModelOrAlias, stmt: sa.sql.Select, skip: int, limit: int, cursor: Optional[KeysetCursorData]) -> sa.sql.Select:
         # Prepare the filter expression
         if cursor:
             # Make sure the columns are still the same
@@ -165,8 +167,9 @@ class KeysetCursor(CursorImplementation[KeysetPageInfo, KeysetCursorData]):
         return stmt.filter(filter_expression).limit(limit + 1)
 
     @classmethod
-    def inspect_data_rows(cls, cursor_value: Optional[KeysetCursorData], query_executor: Query, rows: list[SARowDict]) -> Optional[KeysetPageInfo]:
+    def inspect_data_rows(cls, cursor_value: Optional[KeysetCursorData], query_executor: Query, rows: list[SARowDict]) -> KeysetPageInfo:
         # Decode cursor
+        limit: Optional[int]
         if cursor_value is not None:
             limit = cursor_value.limit
         else:
@@ -183,7 +186,7 @@ class KeysetCursor(CursorImplementation[KeysetPageInfo, KeysetCursorData]):
         has_prev_page = cursor_value is not None
 
         # No rows?
-        if not rows:
+        if not rows or limit is None:
             return KeysetPageInfo(
                 column_names=column_names,
                 sort_asc=sort_direction == SortingDirection.ASC,

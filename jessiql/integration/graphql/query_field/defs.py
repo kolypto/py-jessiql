@@ -23,7 +23,7 @@ class QueryFieldInfo:
 #   path: field names from the root
 # Returns:
 #   QueryFieldInfo
-QueryFieldFunc = abc.Callable[[str, graphql.type.definition.GraphQLField, tuple[str]], QueryFieldInfo]
+QueryFieldFunc = abc.Callable[[str, graphql.type.definition.GraphQLField, tuple[str, ...]], QueryFieldInfo]  # type: ignore[misc]
 
 
 # An empty QueryFieldInfo object that causes the field to be skipped

@@ -31,7 +31,7 @@ class Query(QueryExecutor):
             query = QueryObject.from_query_object(query)
 
         # Proceed
-        super().__init__(query, Model)
+        super().__init__(query, Model)  # type: ignore[arg-type]
 
     @classmethod
     def prepare(cls, Model: type):

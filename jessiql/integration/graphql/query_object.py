@@ -49,7 +49,7 @@ def query_object_for(info: graphql.GraphQLResolveInfo,
             info.schema,
             info.fragments,
             info.variable_values,
-            selected_field_def=selected_field_def,
+            selected_field_def=selected_field_def,  # type: ignore[arg-type]
             selected_field=field_node,
             runtime_type=runtime_type,
             field_query=field_query,
@@ -67,7 +67,7 @@ def graphql_query_object_dict_from_query(
         selected_field: graphql.FieldNode, *,
         runtime_type: Union[str, graphql.GraphQLObjectType] = None,
         field_query: QueryFieldFunc = query_every_field,
-        _field_query_path: tuple[str] = (),
+        _field_query_path: tuple[str, ...] = (),
 ) -> QueryObjectDict:
     """ Inspect the GraphQL query and make a Query Object Dict.
 
@@ -96,15 +96,22 @@ def graphql_query_object_dict_from_query(
     query_arg = get_query_argument_value_for(selected_field, query_arg_name, variable_values) or {}
 
     # Prepare the Query Object Dict we're going to return
-    query_object = {
+    query_object: QueryObjectDict = {
         'select': [],
         'join': {},
-        **query_arg
+        **query_arg  # type: ignore[misc]
     }
 
     # Collect all fields at this level
-    fields = collect_fields(schema, fragments, variable_values, selected_field.selection_set, runtime_type=runtime_type)
-    selected_field_type: graphql.type.definition.GraphQLObjectType = unwrap_type(selected_field_def.type)  # unwrap lists & nonnulls, deal with raw types
+    fields = collect_fields(
+        schema,
+        fragments,
+        variable_values,
+        selected_field.selection_set,  # type: ignore[arg-type]
+        runtime_type=runtime_type
+    )
+    # unwrap lists & nonnulls, deal with raw types
+    selected_field_type: graphql.type.definition.GraphQLObjectType = unwrap_type(selected_field_def.type)  # type: ignore[assignment]
 
     # Iterate every field on this level, see if there's a place for them in the Query Object
     # Note that `field_name` may not be the original field name: it may be aliased by the query!
@@ -122,11 +129,11 @@ def graphql_query_object_dict_from_query(
 
             # Select field
             if info.select:
-                query_object['select'].extend(info.select)
+                query_object['select'].extend(info.select)  # type: ignore[union-attr]
 
             # Join relation
             if info.join_name:
-                query_object['join'][info.join_name] = graphql_query_object_dict_from_query(
+                query_object['join'][info.join_name] = graphql_query_object_dict_from_query(  # type: ignore[index]
                     schema,
                     fragments,
                     variable_values,

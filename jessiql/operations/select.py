@@ -1,6 +1,7 @@
 from collections import abc
 
 import sqlalchemy as sa
+import sqlalchemy.orm
 
 from jessiql.query_object import QueryObject, SelectQuery
 from jessiql.sainfo.columns import resolve_column_by_name
@@ -34,7 +35,7 @@ class SelectOperation(Operation):
         # We could have used constant `1`, but where's fun in that :)
         if len(selected_columns) == 0:
             stmt = stmt.add_columns(
-                *self.target_Model.__mapper__.primary_key
+                *sa.orm.class_mapper(self.target_Model).primary_key
             )
 
         # Done

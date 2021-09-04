@@ -2,12 +2,12 @@ import fastapi
 import json
 from typing import Optional, Any
 
-from jessiql import QueryObject
 from jessiql import exc
+from jessiql.query_object.query_object import QueryObject, QueryObjectDict
 
 try:
     # Optional dependency; this module is only usable when it's installed
-    import yaml
+    import yaml  # type: ignore[import]
 except ImportError:
     yaml = None
 
@@ -56,7 +56,7 @@ def query_object(*,
 
     # Query Object dict
     try:
-        query_object_dict = dict(
+        query_object_dict: QueryObjectDict = dict(  # type: ignore[typeddict-item]
             select=parse_serialized_argument('select', select),
             # join=parse_serialized_argument('join', join),
             filter=parse_serialized_argument('filter', filter),

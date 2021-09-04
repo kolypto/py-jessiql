@@ -17,7 +17,7 @@ class LimitQuery(OperationInputBase):
     limit: Optional[int]
 
     @classmethod
-    def from_query_object(cls, limit: Optional[int]):
+    def from_query_object(cls, limit: Optional[int]):  # type: ignore[override]
         # Check types
         if limit is not None and not isinstance(limit, int):
             raise exc.QueryObjectError(f'"limit" must be an integer')

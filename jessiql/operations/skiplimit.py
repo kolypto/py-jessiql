@@ -107,12 +107,12 @@ class SkipLimitOperation(Operation):
         stmt = stmt.add_columns(
             sa.func.row_number().over(
                 # Groups are partitioned by self._window_over_columns,
-                partition_by=adapter.replace_many(fk_columns),
+                partition_by=adapter.replace_many(fk_columns),  # type: ignore[arg-type]
                 # We have to apply the same ordering from the outside query;
                 # otherwise, the numbering will be undetermined
                 order_by=adapter.replace_many(
                     get_sort_fields_with_direction(self.query.sort, self.target_Model, where='limit')
-                )
+                )  # type: ignore[arg-type]
             )
             # give it a name that we can use later
             .label('__group_row_n')
@@ -126,7 +126,7 @@ class SkipLimitOperation(Operation):
             stmt
             .correlate(None)
             .subquery()
-            ._anonymous_fromclause()
+            ._anonymous_fromclause()  # type: ignore[attr-defined]
         )
         stmt = sa.select([
             column

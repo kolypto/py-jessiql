@@ -56,7 +56,7 @@ class SelectQuery(OperationInputBase):
         return field_name(field) in self.names
 
     @classmethod
-    def from_query_object(cls, select: list[Union[str, dict]], join: dict[str, dict]):
+    def from_query_object(cls, select: list[Union[str, dict]], join: dict[str, dict]):  # type: ignore[override]
         # Check types
         if not isinstance(select, list):
             raise exc.QueryObjectError(f'"select" must be an array')
@@ -64,7 +64,7 @@ class SelectQuery(OperationInputBase):
             raise exc.QueryObjectError(f'"join" must be an array')
 
         # Combine
-        input = [*select, join]
+        input: list[Union[str, dict]] = [*select, join]
 
         # Tell fields and relations apart
         fields: list[SelectedField] = []
@@ -73,11 +73,11 @@ class SelectQuery(OperationInputBase):
         for field in input:
             # str: 'field_name'
             if isinstance(field, str):
-                fields.append(SelectedField(name=field))
+                fields.append(SelectedField(name=field))  # type: ignore[call-arg]
             # dict: {'field_name': QueryObject}
             elif isinstance(field, dict):
                 relations.extend(
-                    SelectedRelation(name=name, query=QueryObject.from_query_object(query))
+                    SelectedRelation(name=name, query=QueryObject.from_query_object(query))  # type: ignore[call-arg,type-arg]
                     for name, query in field.items()
                 )
             # anything else: not supported
@@ -88,7 +88,7 @@ class SelectQuery(OperationInputBase):
         return cls(fields=fields, relations=relations)
 
     @collecting
-    def export(self) -> list:
+    def export(self) -> abc.Iterator[Union[str, dict]]:
         yield from self.fields.keys()
         if self.relations:
             yield {

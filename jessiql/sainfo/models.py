@@ -1,3 +1,6 @@
+import sqlalchemy as sa
+import sqlalchemy.orm
+
 from jessiql.typing import SAModelOrAlias
 
 
@@ -7,4 +10,4 @@ def unaliased_class(Model: SAModelOrAlias) -> type:
     Args:
          Model: model class or AliasedClass
     """
-    return Model.__mapper__.class_
+    return sa.orm.class_mapper(Model).class_

@@ -10,10 +10,10 @@ from jessiql.query_object import QueryObject
 
 
 # A Page Info class: the data that you get after analyzing result rows
-PageInfoT = TypeVar('PageInfoT', bound=type)
+PageInfoT = TypeVar('PageInfoT')
 
 # A Cursor Data class: the data that a cursor contains
-CursorDataT = TypeVar('CursorDataT', bound=type)
+CursorDataT = TypeVar('CursorDataT')
 
 
 class PageLinks(NamedTuple):
@@ -65,20 +65,11 @@ class CursorImplementation(Generic[PageInfoT, CursorDataT]):
         raise NotImplementedError
 
     @classmethod
-    def apply_to_statement(cls, query: QueryObject, target_Model: SAModelOrAlias, stmt: sa.sql.Select, skip: int, limit: int, cursor: Optional[CursorData]) -> sa.sql.Select:
+    def apply_to_statement(cls, query: QueryObject, target_Model: SAModelOrAlias, stmt: sa.sql.Select, skip: int, limit: int, cursor: Optional[CursorDataT]) -> sa.sql.Select:
         """ Modify the SQL Select statement that produces resulting rows """
         raise NotImplementedError
 
     @classmethod
-    def inspect_data_rows(cls, cursor_value: Optional[CursorDataT], query_executor: Query, rows: list[SARowDict]) -> Optional[PageInfoT]:
+    def inspect_data_rows(cls, cursor_value: Optional[CursorDataT], query_executor: Query, rows: list[SARowDict]) -> PageInfoT:
         """ Inspect the result set and extract Page Info """
         raise NotImplementedError
-
-
-class PageLinks(NamedTuple):
-    """ Links to the prev/next pages """
-    # Link to the previous page, if available
-    prev: Optional[str]
-
-    # Link to the next page, if available
-    next: Optional[str]

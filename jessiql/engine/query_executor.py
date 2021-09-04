@@ -314,7 +314,7 @@ class QueryExecutor:
 #   (User,)
 #   (User, 'articles', Article)
 #   (User, 'articles', Article, 'comments', Comment)
-LoadPath = tuple[Union[type, str], ...]
+LoadPath = tuple[Union[type, str], ...]  # type: ignore[misc]
 
 # A callable that customizes a statement
 CustomizeStatementCallable = abc.Callable[[QueryExecutor, sa.sql.Select], sa.sql.Select]

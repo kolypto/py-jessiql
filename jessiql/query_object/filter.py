@@ -2,11 +2,12 @@
 
 from __future__ import annotations
 
+from collections import abc
+from typing import Any, Union
 from dataclasses import dataclass
 
 import itertools
 import sqlalchemy as sa
-from typing import Any, Union
 
 from jessiql import exc
 from jessiql.util.dataclasses import dataclass_notset
@@ -22,7 +23,7 @@ class FilterQuery(OperationInputBase):
     conditions: list[FilterExpressionBase]
 
     @classmethod
-    def from_query_object(cls, filter: dict):
+    def from_query_object(cls, filter: dict):  # type: ignore[override]
         # Check types
         if not isinstance(filter, dict):
             raise exc.QueryObjectError(f'"filter" must be an object')
@@ -39,7 +40,7 @@ class FilterQuery(OperationInputBase):
 
     @classmethod
     @collecting
-    def _parse_input_fields(cls, condition: dict) -> list[FilterExpressionBase]:
+    def _parse_input_fields(cls, condition: dict) -> abc.Iterator[FilterExpressionBase]:
         # Iterate the object
         for key, value in condition.items():
             # If a key starts with $ ($and, $or, ...), it is a boolean expression
@@ -53,11 +54,11 @@ class FilterQuery(OperationInputBase):
     def _parse_input_field_expressions(cls, field_name: str, value: Union[dict[str, Any], Any]):
         # If the value is not a dict, it's a shortcut: { key: value }
         if not isinstance(value, dict):
-            yield FieldFilterExpression(field=field_name, operator='$eq', value=value)
+            yield FieldFilterExpression(field=field_name, operator='$eq', value=value)  # type: ignore[call-arg]
         # If the value is a dict, every item will be an operator and an operand
         else:
             for operator, operand in value.items():
-                yield FieldFilterExpression(field=field_name, operator=operator, value=operand)
+                yield FieldFilterExpression(field=field_name, operator=operator, value=operand)  # type: ignore[call-arg]
 
     @classmethod
     def _parse_input_boolean_expression(cls, operator: str, conditions: Union[dict, list[dict]]):
@@ -77,7 +78,7 @@ class FilterQuery(OperationInputBase):
         return BooleanFilterExpression(
             operator=operator,
             clauses=list(itertools.chain.from_iterable(
-                cls.parse_input_fields(condition)
+                cls._parse_input_fields(condition)
                 for condition in conditions
             ))
         )

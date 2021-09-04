@@ -3,7 +3,8 @@
 import graphql
 
 from collections import abc
-from typing import Union, Any
+from typing import Union, Any, Optional
+
 
 # TODO: when this solution is tested & published, post a link here:
 #   https://github.com/graphql-python/graphene/issues/57
@@ -28,7 +29,7 @@ def selected_field_names_from_info(info: graphql.GraphQLResolveInfo, runtime_typ
         info.schema,
         info.fragments,
         info.variable_values,
-        field_node.selection_set,
+        field_node.selection_set,  # type: ignore[arg-type]
         runtime_type=runtime_type
     )
 
@@ -164,7 +165,7 @@ def selected_fields_tree(
         fragments: dict[str, graphql.FragmentDefinitionNode],
         variable_values: dict[str, Any],
         selection_set: graphql.SelectionSetNode, *,
-        runtime_type: Union[str, graphql.GraphQLObjectType] = None) -> list[str, dict[str, list]]:
+        runtime_type: Union[str, graphql.GraphQLObjectType] = None) -> list[Union[str, dict[str, list]]]:
     """ Get the tree of selected fields
 
     NOTE: this function is not really used in JessiQL. It's just an experiment.
@@ -224,7 +225,7 @@ def collect_fields(
 
     # Resolve `runtime_type`
     if isinstance(runtime_type, str):
-        runtime_type = schema.type_map[runtime_type]  # raises: KeyError
+        runtime_type = schema.type_map[runtime_type]  # type: ignore[assignment]  # raises: KeyError
 
     # Create a fake execution context that is just capable enough to collect fields
     # It's like a lightweight ExecutionContext that reuses its capabilities
@@ -235,12 +236,14 @@ def collect_fields(
     )
 
     # Resolve all fields
+    visited_fragment_names: set[str] = set()
     fields_map = execution_context.collect_fields(
-        runtime_type=runtime_type or None,
-        # runtime_type=runtime_type or graphql.GraphQLObjectType('<temp>', []),  # use a dummy object that fails all tests
+        # runtime_type=runtime_type or None,
+        # Use an object that would fail GraphQL internal tests
+        runtime_type=runtime_type or graphql.GraphQLObjectType('<temp>', []),  # type: ignore[arg-type]
         selection_set=selection_set,
         fields={},  # (out) memo
-        visited_fragment_names=(visited_fragment_names := set()),  # out
+        visited_fragment_names=visited_fragment_names, # out
     )
 
     # Test fragment resolution

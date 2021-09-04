@@ -39,7 +39,7 @@ class SortQuery(OperationInputBase):
         return field_name(field) in self.names
 
     @classmethod
-    def from_query_object(cls, sort: list[str]):
+    def from_query_object(cls, sort: list[str]):  # type: ignore[override]
         # Check types
         if not isinstance(sort, list):
             raise exc.QueryObjectError(f'"sort" must be an array')
@@ -70,7 +70,7 @@ class SortQuery(OperationInputBase):
             direction = SortingDirection.ASC
 
         # Construct
-        return SortingField(name=name, direction=direction)
+        return SortingField(name=name, direction=direction)  # type: ignore[call-arg]
 
 
 @dataclass_notset('property')

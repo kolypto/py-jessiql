@@ -2,6 +2,8 @@ from collections import abc
 
 import collections
 import itertools
+from typing import Union
+
 import sqlalchemy as sa
 import sqlalchemy.orm.strategies
 
@@ -44,8 +46,8 @@ class JSelectInLoader:
         self.target_model = target_model
 
         # Mappers
-        self.source_mapper: sa.orm.Mapper = source_model.__mapper__
-        self.target_mapper: sa.orm.Mapper = target_model.__mapper__
+        self.source_mapper: sa.orm.Mapper = sa.orm.class_mapper(source_model)
+        self.target_mapper: sa.orm.Mapper = sa.orm.class_mapper(target_model)
 
         # Relationship and its name (key)
         self.relation_property = relation_property
@@ -63,6 +65,10 @@ class JSelectInLoader:
         'query_info',
         'our_states', 'none_states',
     )
+
+    # When `query_info.load_only_child`, it's a `dict`
+    # Otherwise, it's a `list`
+    our_states: Union[dict, list]
 
     # Inspired by SelectInLoader._load_for_path(), part 1
     # [o] def _load_for_path(...)
@@ -157,20 +163,23 @@ class JSelectInLoader:
     def fetch_results_and_populate_states(self, connection: sa.engine.Connection, q: sa.sql.Select) -> abc.Iterator[SARowDict]:
         """ Execute the query, fetch results, populate states """
         if self.query_info.load_only_child:
-            yield from self._load_via_child(connection, self.our_states, self.none_states, q)
+            yield from self._load_via_child(connection, self.our_states, self.none_states, q)  # type: ignore[arg-type]
         else:
-            yield from self._load_via_parent(connection, self.our_states, q)
+            yield from self._load_via_parent(connection, self.our_states, q)  # type: ignore[arg-type]
 
     # Chunk size: how many related objects to load at once with one SQL IN(...) query
-    CHUNKSIZE = sa.orm.strategies.SelectInLoader._chunksize
+    CHUNKSIZE = sa.orm.strategies.SelectInLoader._chunksize  # type: ignore[attr-defined]
 
     # Inspired by SelectInLoader._load_via_parent()
     # [o] def _load_via_parent(...):
     def _load_via_parent(self, connection: sa.engine.Connection, our_states: list[SARowDict], q: sa.sql.Select) -> abc.Iterator[SARowDict]:
+        # mypy says it might be `None`. We don't want weird relations.
+        assert self.relation_property.uselist is not None
+
         # [o] uselist = self.uselist
         uselist: bool = self.relation_property.uselist
         # [o] _empty_result = () if uselist else None
-        _empty_result = lambda: [] if uselist else None
+        _empty_result: abc.Callable[[], Union[list, None]] = lambda: [] if uselist else None
 
         # [o]
         while our_states:
@@ -184,14 +193,14 @@ class JSelectInLoader:
                 for key, state_dict in chunk
             ]
 
-            # [o]
-            data = collections.defaultdict(list)
+            # [o] data = collections.defaultdict(list)
+            data: dict[tuple, list[dict]] = collections.defaultdict(list)
             for k, v in itertools.groupby(
                     # [o] context.session.execute(
                     # [o] q, params={"primary_keys": primary_keys}
                     # [CUSTOMIZED]
                     connection.execute(q, {"primary_keys": primary_keys}).mappings(),#.unique()
-                    lambda row: get_foreign_key_tuple(row, self.query_info),
+                    lambda row: get_foreign_key_tuple(row, self.query_info),  # type: ignore[arg-type]
             ):
                 # [o] data[k].extend(vv[1] for vv in v)
                 # [CUSTOMIZED] convert MappingResult to an actual, mutable dict() to which we'll add keys
@@ -215,11 +224,17 @@ class JSelectInLoader:
                     state_dict[self.key] = collection  # [CUSTOMIZED]
 
                 # [ADDED] Return loaded objects
-                yield from collection
+                if uselist:
+                    yield from collection  # type: ignore[misc]
+                else:
+                    yield collection  # type: ignore[misc]
 
     # Inspired by SelectInLoader._load_via_child()
     # [o] def _load_via_child(self, our_states, none_states, query_info, q, context):
     def _load_via_child(self, connection: sa.engine.Connection, our_states: dict[tuple, list], none_states: list[dict], q: sa.sql.Select) -> abc.Iterator[SARowDict]:
+        # mypy says it might be `None`. We don't want weird relations.
+        assert self.relation_property.uselist is not None
+
         # [o] uselist = self.uselist
         uselist: bool = self.relation_property.uselist
 
@@ -235,7 +250,7 @@ class JSelectInLoader:
 
             # [o]
             data = {
-                get_primary_key_tuple(self.target_mapper, row): dict(row)  # [CUSTOMIZED] Convert mappings into mutable dicts
+                get_primary_key_tuple(self.target_mapper, row): dict(row)  # type: ignore[arg-type]   # [CUSTOMIZED] Convert mappings into mutable dicts
                 # [o] for k, v in context.session.execute(
                 for row in connection.execute(q, {"primary_keys": [
                     key[0] if self.query_info.zero_idx else key

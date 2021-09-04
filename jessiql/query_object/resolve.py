@@ -107,6 +107,7 @@ def resolve_selected_relation(field: SelectedRelation, Model: SAModelOrAlias, *,
 
     # Populate the missing fields
     field.property = attribute.property
+    assert field.property.uselist is not None  # initialized and properly configured
     field.uselist = field.property.uselist
 
 

@@ -37,7 +37,7 @@ def get_query_argument_name_for(field_def: graphql.GraphQLField) -> Optional[str
         argument name (str), or None if not found.
     """
     for arg_name, arg in field_def.args.items():
-        if arg.type.name == QUERY_OBJECT_INPUT_NAME:
+        if arg.type.name == QUERY_OBJECT_INPUT_NAME:  # type: ignore[union-attr]
             return arg_name
     else:
         return None
