@@ -1,5 +1,13 @@
 import nox.sessions
 
+# Nox
+nox.options.reuse_existing_virtualenvs = True
+nox.options.sessions = [
+    'tests',
+    'tests_sqlalchemy',
+    'tests_graphql',
+    'tests_fastapi',
+]
 
 # Versions
 PYTHON_VERSIONS = ['3.8', '3.9']
@@ -16,17 +24,8 @@ FASTAPI_VERSIONS = [
 ]
 
 
-nox.options.reuse_existing_virtualenvs = True
-nox.options.sessions = [
-    'tests',
-    'tests_sqlalchemy',
-    'tests_graphql',
-    'tests_fastapi',
-]
-
-
 @nox.session(python=PYTHON_VERSIONS)
-def tests(session: nox.sessions.Session, *, versions: list[str] = None):
+def tests(session: nox.sessions.Session, *, versions: list[str] = ()):
     """ Run all tests """
     session.install('poetry')
     session.run('poetry', 'install')
