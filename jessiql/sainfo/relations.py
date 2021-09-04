@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-from functools import cache
-
 from sqlalchemy.orm import RelationshipProperty
 from sqlalchemy.orm.attributes import InstrumentedAttribute
 from sqlalchemy.orm.base import (
@@ -10,6 +8,13 @@ from sqlalchemy.orm.base import (
     MANYTOMANY,
 )
 from sqlalchemy.orm.dynamic import DynaLoader
+
+try:
+    # Python 3.9+
+    from functools import cache
+except ImportError:
+    # Python 3.8
+    from functools import lru_cache as cache
 
 from jessiql.sainfo.names import model_name
 from jessiql.typing import SAModelOrAlias, SAAttribute

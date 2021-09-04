@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-from functools import cache
-
 import sqlalchemy as sa
 from sqlalchemy import TypeDecorator
 from sqlalchemy.sql.elements import Label
@@ -17,6 +15,13 @@ from sqlalchemy.orm.attributes import (
     QueryableAttribute,
     InstrumentedAttribute,
 )
+
+try:
+    # Python 3.9+
+    from functools import cache
+except ImportError:
+    # Python 3.8
+    from functools import lru_cache as cache
 
 from jessiql.sainfo.names import model_name
 from jessiql.typing import SAModelOrAlias, SAAttribute

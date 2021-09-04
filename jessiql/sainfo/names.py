@@ -1,5 +1,11 @@
 from typing import Union
-from functools import cache
+
+try:
+    # Python 3.9+
+    from functools import cache
+except ImportError:
+    # Python 3.8
+    from functools import lru_cache as cache
 
 import sqlalchemy as sa
 import sqlalchemy.orm
