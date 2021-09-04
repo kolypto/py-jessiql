@@ -1,5 +1,5 @@
 [![Test](https://github.com/kolypto/py-jessiql/workflows/Test/badge.svg)](/kolypto/py-jessiql/actions)
-[![Pythons](https://img.shields.io/badge/python-3.8%E2%80%933.9-blue.svg)](noxfile.py)
+[![Pythons](https://img.shields.io/badge/python-3.9%E2%80%933.9-blue.svg)](noxfile.py)
 
 Jessiql: JSON Query Language for SqlAlchemy Core
 ================================================
