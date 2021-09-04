@@ -1,14 +1,14 @@
 import nox.sessions
 
 
+# Versions
 PYTHON_VERSIONS = ['3.8', '3.9']
 SQLALCHEMY_VERSIONS = [
     *(f'1.3.{x}' for x in range(7, 1 + 24)),
-    *(f'1.4.{x}' for x in range(13, 1 + 23)),
+    *(f'1.4.{x}' for x in range(14, 1 + 23)),
 ]
 GRAPHQL_CORE_VERSIONS = [
-    *(f'3.0.{x}' for x in range(1, 1 + 5)),
-    *(f'3.1.{x}' for x in range(1, 1 + 6)),
+    *(f'3.1.{x}' for x in range(1, 3 + 6)),
 ]
 FASTAPI_VERSIONS = [
     '0.51.0', '0.52.0', '0.53.2', '0.54.2', '0.56.1', '0.56.1', '0.57.0', '0.58.1', '0.59.0',
