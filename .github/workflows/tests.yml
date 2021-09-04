@@ -45,7 +45,7 @@ jobs:
         env:
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: postgres
-          POSTGRES_DB: test_myproject
+          POSTGRES_DB: test_jessiql
       mysql:
         image: mysql
         ports:
@@ -54,4 +54,4 @@ jobs:
           MYSQL_USER: mysql
           MYSQL_PASSWORD: mysql
           MYSQL_ROOT_PASSWORD: mysql
-          MYSQL_DATABASE: test_myproject
+          MYSQL_DATABASE: test_jessiql
