@@ -2,11 +2,9 @@ from __future__ import annotations
 
 from functools import cache
 
-from sqlalchemy.orm import (  # type: ignore[attr-defined]  # sqlalchemy stubs not updated
-    InstrumentedAttribute,
-    RelationshipProperty,
-)
-from sqlalchemy.orm import (  # type: ignore[attr-defined]  # sqlalchemy stubs not updated
+from sqlalchemy.orm import RelationshipProperty
+from sqlalchemy.orm.attributes import InstrumentedAttribute
+from sqlalchemy.orm.base import (
     ONETOMANY,
     MANYTOONE,
     MANYTOMANY,

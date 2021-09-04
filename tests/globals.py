@@ -2,8 +2,9 @@ import os
 from collections import abc
 
 import sqlalchemy as sa
-import sqlalchemy.engine
 import sqlalchemy.orm
+
+from jessiql.sainfo.version import SA_13, SA_14
 
 
 # URL of the database to connect to
@@ -12,8 +13,13 @@ DATABASE_URL = os.getenv('DATABASE_URL', 'postgresql+psycopg2://postgres:postgre
 
 engine: sa.engine.Engine = sa.engine.create_engine(
     DATABASE_URL,
-    future=True,  # SA 1.4: 2.0 forward compatibility
     executemany_mode='batch',
+    **({
+        SA_13: dict(),
+        SA_14: dict(
+            future=True,  # SA 1.4: 2.0 forward compatibility
+        ),
+    }[True])
 )
 
 
@@ -21,9 +27,14 @@ SessionMakerCallable = abc.Callable[[], sa.orm.Session]
 
 
 SessionMaker: SessionMakerCallable = sa.orm.sessionmaker(
-    future=True,  # SA 1.4: 2.0 forward compatibility
+    bind=engine,
     autocommit=False,
     autoflush=False,
-    bind=engine,
+    **({
+        SA_13: dict(),
+        SA_14: dict(
+            future=True,  # SA 1.4: 2.0 forward compatibility
+        ),
+    }[True])
 )
 

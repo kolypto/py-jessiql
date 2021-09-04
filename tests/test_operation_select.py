@@ -2,8 +2,10 @@ import pytest
 import sqlalchemy as sa
 
 from jessiql import QueryObjectDict
+from jessiql.sainfo.version import SA_14
 from jessiql.testing.insert import insert
 from jessiql.testing.recreate_tables import created_tables
+from jessiql.util import sacompat
 
 from .util.models import IdManyFieldsMixin, id_manyfields
 from .util.test_queries import typical_test_sql_selected_columns, typical_test_query_results, typical_test_query_text_and_results
@@ -20,7 +22,7 @@ from .util import okok
 def test_select_sql(connection: sa.engine.Connection, query_object: QueryObjectDict, expected_columns: list[str]):
     """ Typical test: what SQL is generated """
     # Models
-    Base = sa.orm.declarative_base()
+    Base = sacompat.declarative_base()
 
     class Model(IdManyFieldsMixin, Base):
         __tablename__ = 'a'
@@ -43,7 +45,7 @@ def test_select_sql(connection: sa.engine.Connection, query_object: QueryObjectD
 def test_select_results(connection: sa.engine.Connection, query_object: QueryObjectDict, expected_results: list[dict]):
     """ Typical test: real data, real query, real results """
     # Models
-    Base = sa.orm.declarative_base()
+    Base = sacompat.declarative_base()
 
     class Model(IdManyFieldsMixin, Base):
         __tablename__ = 'a'
@@ -76,7 +78,8 @@ def test_select_results(connection: sa.engine.Connection, query_object: QueryObj
         # Joined: selects the FK anyway, selects the PK by default
         'SELECT a.user_id, a.id',
         # Joined: join condition works
-        'WHERE a.user_id IN ([POSTCOMPILE_primary_keys])',
+        'WHERE a.user_id IN ([POSTCOMPILE_primary_keys])' if SA_14 else
+        'WHERE a.user_id IN ([EXPANDING_primary_keys])',
     ], [
         # Three users, articles correctly distributed
         {'id': 1, 'articles': [
@@ -106,7 +109,8 @@ def test_select_results(connection: sa.engine.Connection, query_object: QueryObj
         # NOTE: FK selected for join
         'SELECT a.user_id, a.a',
         # Joined: join condition works
-        'WHERE a.user_id IN ([POSTCOMPILE_primary_keys])',
+        'WHERE a.user_id IN ([POSTCOMPILE_primary_keys])' if SA_14 else
+        'WHERE a.user_id IN ([EXPANDING_primary_keys])',
     ], [
         # Main: 'a' selected, 'id' still selected
         {'id': 1, 'a': 'u-1-a', 'articles': [
@@ -128,7 +132,8 @@ def test_select_results(connection: sa.engine.Connection, query_object: QueryObj
         # Join: selects my column
         # NOTE: PK selected for join
         'SELECT u.id, u.a',
-        'WHERE u.id IN ([POSTCOMPILE_primary_keys])',
+        'WHERE u.id IN ([POSTCOMPILE_primary_keys])' if SA_14 else
+        'WHERE u.id IN ([EXPANDING_primary_keys])',
     ], [
         # Author selected for every user
         # Value: dict, not an array
@@ -153,15 +158,18 @@ def test_select_results(connection: sa.engine.Connection, query_object: QueryObj
         # Join: articles
         'SELECT a.user_id, a.id',
         'FROM a',
-        'WHERE a.user_id IN ([POSTCOMPILE_primary_keys])',
+        'WHERE a.user_id IN ([POSTCOMPILE_primary_keys])' if SA_14 else
+        'WHERE a.user_id IN ([EXPANDING_primary_keys])',
         # Join: comments
         'SELECT c.article_id, c.user_id',
         'FROM c',
-        'WHERE c.article_id IN ([POSTCOMPILE_primary_keys])',
+        'WHERE c.article_id IN ([POSTCOMPILE_primary_keys])' if SA_14 else
+        'WHERE c.article_id IN ([EXPANDING_primary_keys])',
         # Join: author
         'SELECT u.id',
         'FROM u',
-        'WHERE u.id IN ([POSTCOMPILE_primary_keys])',
+        'WHERE u.id IN ([POSTCOMPILE_primary_keys])' if SA_14 else
+        'WHERE u.id IN ([EXPANDING_primary_keys])',
     ], [
          # Main
          {'id': 1, 'articles': [
@@ -185,7 +193,7 @@ def test_select_results(connection: sa.engine.Connection, query_object: QueryObj
 def test_joined_select(connection: sa.engine.Connection, model: str, query_object: QueryObjectDict, expected_query_lines: list[str], expected_results: list[dict]):
     """ Typical test: JOINs, SQL and results """
     # Models
-    Base = sa.orm.declarative_base()
+    Base = sacompat.declarative_base()
 
     # One-to-Many, FK on remote side:
     #   User.articles: User -> Article (Article.user_id)

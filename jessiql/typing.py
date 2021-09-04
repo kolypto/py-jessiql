@@ -17,4 +17,4 @@ SARowDict = dict
 
 # An SqlAlchemy attribute
 # That is, the instrumented attribute you get when accessing <model>.<attribute>
-SAAttribute = Union[sa.orm.InstrumentedAttribute, sa.orm.MapperProperty]  # type: ignore[name-defined]
+SAAttribute = Union[sa.orm.attributes.InstrumentedAttribute, sa.orm.interfaces.MapperProperty]  # type: ignore[name-defined]

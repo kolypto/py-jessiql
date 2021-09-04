@@ -5,8 +5,10 @@ from sqlalchemy.dialects import postgresql as pg
 import jessiql
 from jessiql import QueryObjectDict
 from jessiql.features.cursor.cursors.encode import decode_opaque_cursor
+from jessiql.sainfo.version import SA_14
 from jessiql.testing.insert import insert
 from jessiql.testing.recreate_tables import created_tables
+from jessiql.util import sacompat
 
 from .util.models import IdManyFieldsMixin, id_manyfields
 from .util.test_queries import typical_test_sql_query_text, typical_test_query_results, typical_test_query_text_and_results
@@ -24,7 +26,7 @@ from .util.test_queries import typical_test_sql_query_text, typical_test_query_r
 def test_skiplimit_sql(connection: sa.engine.Connection, query_object: QueryObjectDict, expected_query_lines: list[str]):
     """ Typical test: what SQL is generated """
     # Models
-    Base = sa.orm.declarative_base()
+    Base = sacompat.declarative_base()
 
     class Model(IdManyFieldsMixin, Base):
         __tablename__ = 'a'
@@ -48,7 +50,7 @@ def test_skiplimit_sql(connection: sa.engine.Connection, query_object: QueryObje
 def test_skiplimit_results(connection: sa.engine.Connection, query_object: QueryObjectDict, expected_results: list[dict]):
     """ Typical test: real data, real query, real results """
     # Models
-    Base = sa.orm.declarative_base()
+    Base = sacompat.declarative_base()
 
     class Model(IdManyFieldsMixin, Base):
         __tablename__ = 'a'
@@ -73,7 +75,8 @@ def test_skiplimit_results(connection: sa.engine.Connection, query_object: Query
         'FROM (',
             'SELECT a.user_id AS user_id, a.id AS id, row_number() OVER (PARTITION BY a.user_id ORDER BY a.id ASC NULLS LAST) AS __group_row_n',
             'FROM a',
-            'WHERE a.user_id IN ([POSTCOMPILE_primary_keys])',
+            'WHERE a.user_id IN ([POSTCOMPILE_primary_keys])' if SA_14 else
+            'WHERE a.user_id IN ([EXPANDING_primary_keys])',
             'ORDER BY a.id ASC NULLS LAST) AS anon_1',
         ')',
         'WHERE __group_row_n <= 1'
@@ -107,7 +110,7 @@ def test_skiplimit_results(connection: sa.engine.Connection, query_object: Query
 def test_joined_skiplimit(connection: sa.engine.Connection, query_object: QueryObjectDict, expected_query_lines: list[str], expected_results: list[dict]):
     """ Typical test: JOINs, SQL and results """
     # Models
-    Base = sa.orm.declarative_base()
+    Base = sacompat.declarative_base()
 
     class User(IdManyFieldsMixin, Base):
         __tablename__ = 'u'
@@ -226,7 +229,7 @@ def test_skiplimit_cursor_pagination(connection: sa.engine.Connection):
 
 
     # Models
-    Base = sa.orm.declarative_base()
+    Base = sacompat.declarative_base()
 
     class User(IdManyFieldsMixin, Base):
         __tablename__ = 'u'

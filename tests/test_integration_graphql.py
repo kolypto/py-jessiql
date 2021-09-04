@@ -8,6 +8,7 @@ from graphql import GraphQLResolveInfo
 from jessiql import QueryObjectDict
 from jessiql.integration.graphql import query_object_for
 from jessiql.integration.graphql.query_field.sa_model import QueryModelField
+from jessiql.util import sacompat
 
 from tests.util.models import IdManyFieldsMixin
 
@@ -188,7 +189,7 @@ def query(**fields):
 def test_query_object(query: str, variables: dict, expected_result_query: dict):
     """ Test how Query Object is generated """
     # Models
-    Base = sa.orm.declarative_base()
+    Base = sacompat.declarative_base()
 
     class Model(IdManyFieldsMixin, Base):
         __tablename__ = 'models'
@@ -282,7 +283,7 @@ def test_query_object(query: str, variables: dict, expected_result_query: dict):
 def test_query_object_with_sa_model(query_str: str, expected_query_object: dict):
     """ Test how Query Object works with a real SqlAlchemy model """
     # Models
-    Base = sa.orm.declarative_base()
+    Base = sacompat.declarative_base()
     class Model(IdManyFieldsMixin, Base):
         __tablename__ = 'models'
 

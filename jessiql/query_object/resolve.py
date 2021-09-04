@@ -7,7 +7,7 @@ from __future__ import annotations
 
 from functools import singledispatch
 
-from sqlalchemy.orm import (  # type: ignore[attr-defined]  # sqlalchemy stubs not updated
+from sqlalchemy.orm.attributes import (
     InstrumentedAttribute,
 )
 

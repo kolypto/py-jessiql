@@ -4,6 +4,7 @@ import sqlalchemy as sa
 from jessiql import QueryObjectDict
 from jessiql.testing.insert import insert
 from jessiql.testing.recreate_tables import created_tables
+from jessiql.util import sacompat
 
 from .util.models import IdManyFieldsMixin, id_manyfields
 from .util.test_queries import typical_test_sql_query_text, typical_test_query_results, typical_test_query_text_and_results
@@ -22,7 +23,7 @@ from .util.test_queries import typical_test_sql_query_text, typical_test_query_r
 def test_sort_sql(connection: sa.engine.Connection, query_object: QueryObjectDict, expected_query_lines: list[str]):
     """ Typical test: what SQL is generated """
     # Models
-    Base = sa.orm.declarative_base()
+    Base = sacompat.declarative_base()
 
     class Model(IdManyFieldsMixin, Base):
         __tablename__ = 'a'
@@ -39,7 +40,7 @@ def test_sort_sql(connection: sa.engine.Connection, query_object: QueryObjectDic
 def test_sort_results(connection: sa.engine.Connection, query_object: QueryObjectDict, expected_results: list[dict]):
     """ Typical test: real data, real query, real results """
     # Models
-    Base = sa.orm.declarative_base()
+    Base = sacompat.declarative_base()
 
     class Model(IdManyFieldsMixin, Base):
         __tablename__ = 'a'
@@ -75,7 +76,7 @@ def test_sort_results(connection: sa.engine.Connection, query_object: QueryObjec
 def test_joined_sort(connection: sa.engine.Connection, query_object: QueryObjectDict, expected_query_lines: list[str], expected_results: list[dict]):
     """ Typical test: JOINs, SQL and results """
     # Models
-    Base = sa.orm.declarative_base()
+    Base = sacompat.declarative_base()
 
     class User(IdManyFieldsMixin, Base):
         __tablename__ = 'u'

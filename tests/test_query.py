@@ -2,6 +2,7 @@ import pytest
 import sqlalchemy as sa
 
 from jessiql import QueryObjectDict, Query
+from jessiql.util import sacompat
 from .util.models import IdManyFieldsMixin
 from .util.test_queries import assert_query_statements_lines
 
@@ -23,7 +24,7 @@ from .util.test_queries import assert_query_statements_lines
 def test_query_customize_statements(connection: sa.engine.Connection, query_object: QueryObjectDict, expected_columns: list[str]):
     """ Test Query.customize_statements: adding security to queries """
     # Models
-    Base = sa.orm.declarative_base()
+    Base = sacompat.declarative_base()
 
     class User(IdManyFieldsMixin, Base):
         __tablename__ = 'u'
@@ -53,11 +54,11 @@ def test_query_customize_statements(connection: sa.engine.Connection, query_obje
 
         path = q.load_path
         if path == (Article,):
-            return stmt.filter(q.Model.user_id == ALLOWED_USER_ID)
+            return stmt.where(q.Model.user_id == ALLOWED_USER_ID)
         elif path == (Article, 'author', User):
-            return stmt.filter(q.Model.id == ALLOWED_USER_ID)
+            return stmt.where(q.Model.id == ALLOWED_USER_ID)
         elif path == (Article, 'comments', Comment):
-            return stmt.filter(q.Model.user_id == ALLOWED_USER_ID)
+            return stmt.where(q.Model.user_id == ALLOWED_USER_ID)
         else:
             raise NotImplementedError
 

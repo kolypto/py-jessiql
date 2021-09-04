@@ -1,7 +1,8 @@
+from typing import Union
 from functools import cache
 
 import sqlalchemy as sa
-from typing import Union
+import sqlalchemy.orm
 
 from jessiql.typing import SAModelOrAlias, SAAttribute
 from .models import unaliased_class
@@ -17,7 +18,7 @@ def model_name(Model: SAModelOrAlias) -> str:
 def field_name(field: Union[str, SAAttribute]) -> str:
     """ Get the name of the field """
     # Get the name
-    if isinstance(field, sa.orm.InstrumentedAttribute):  # type: ignore[attr-defined]  # sqlalchemy stubs not updated
+    if isinstance(field, sa.orm.attributes.InstrumentedAttribute):
         return field.key
     elif isinstance(field, str):
         return field

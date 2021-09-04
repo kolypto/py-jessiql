@@ -76,7 +76,8 @@ class PrimaryQueryLoader(QueryLoaderBase):
         # Get the result
         # We use `.mappings()` to convert a list of rows `list[RowMapping]` into a list of dicts `list[dict]`
         res: sa.engine.CursorResult = connection.execute(stmt)
-        yield from (dict(row) for row in res.mappings())
+
+        yield from (dict(row) for row in res)
 
 
 class RelatedQueryLoader(QueryLoaderBase):

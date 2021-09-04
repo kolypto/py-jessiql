@@ -10,6 +10,7 @@ from jessiql.sautil.adapt import SimpleColumnsAdapter
 
 from .base import Operation
 from .sort import get_sort_fields_with_direction
+from ..sainfo.version import SA_14
 
 
 class SkipLimitOperation(Operation):
@@ -103,8 +104,7 @@ class SkipLimitOperation(Operation):
 
         # First, add a row counter
         adapter = SimpleColumnsAdapter(self.target_Model)
-
-        stmt = stmt.add_columns(
+        row_counter_col = (
             sa.func.row_number().over(
                 # Groups are partitioned by self._window_over_columns,
                 partition_by=adapter.replace_many(fk_columns),  # type: ignore[arg-type]
@@ -118,16 +118,29 @@ class SkipLimitOperation(Operation):
             .label('__group_row_n')
         )
 
+        if SA_14:
+            stmt = stmt.add_columns(row_counter_col)
+        else:
+            stmt.append_column(row_counter_col)
+
         # Wrap ourselves into a subquery.
         # This is necessary because Postgres does not let you reference SELECT aliases in the WHERE clause.
         # Reason: WHERE clause is executed before SELECT
-        subquery = (
-            # Taken from: Query.from_self()
-            stmt
-            .correlate(None)
-            .subquery()
-            ._anonymous_fromclause()  # type: ignore[attr-defined]
-        )
+        if SA_14:
+            subquery = (
+                # Taken from: Query.from_self()
+                stmt
+                .correlate(None)
+                .subquery()
+                ._anonymous_fromclause()  # type: ignore[attr-defined]
+            )
+        else:
+            subquery = (
+                stmt
+                .correlate(None)
+                .alias()
+            )
+
         stmt = sa.select([
             column
             for column in subquery.c
@@ -137,9 +150,15 @@ class SkipLimitOperation(Operation):
         # Apply the LIMIT condition using row numbers
         # These two statements simulate skip/limit using window functions
         if skip:
-            stmt = stmt.filter(sa.sql.literal_column('__group_row_n') > skip)
+            if SA_14:
+                stmt = stmt.filter(sa.sql.literal_column('__group_row_n') > skip)
+            else:
+                stmt = stmt.where(sa.sql.literal_column('__group_row_n') > skip)
         if limit:
-            stmt = stmt.filter(sa.sql.literal_column('__group_row_n') <= ((skip or 0) + limit))
+            if SA_14:
+                stmt = stmt.filter(sa.sql.literal_column('__group_row_n') <= ((skip or 0) + limit))
+            else:
+                stmt = stmt.where(sa.sql.literal_column('__group_row_n') <= ((skip or 0) + limit))
 
         # Done
         return stmt

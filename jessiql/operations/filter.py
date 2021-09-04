@@ -13,6 +13,7 @@ from jessiql.query_object.filter import FilterExpressionBase, FieldFilterExpress
 from jessiql import exc
 from jessiql.sainfo.columns import resolve_column_by_name
 from jessiql.typing import SAModelOrAlias
+from jessiql.sainfo.version import SA_13
 
 
 class FilterOperation(Operation):
@@ -32,7 +33,10 @@ class FilterOperation(Operation):
         )
 
         # Add the WHERE clause
-        stmt = stmt.filter(*conditions)
+        if SA_13:
+            stmt = stmt.where(sa.and_(*conditions))
+        else:
+            stmt = stmt.filter(*conditions)
 
         # Done
         return stmt

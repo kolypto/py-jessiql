@@ -10,10 +10,12 @@ from sqlalchemy.orm import (
     CompositeProperty,
     ColumnProperty,
 )
-from sqlalchemy.orm import (  # type: ignore[attr-defined]  # sqlalchemy stubs not updated
+from sqlalchemy.orm.interfaces import (
+    MapperProperty,
+)
+from sqlalchemy.orm.attributes import (
     QueryableAttribute,
     InstrumentedAttribute,
-    MapperProperty,
 )
 
 from jessiql.sainfo.names import model_name

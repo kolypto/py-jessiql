@@ -6,9 +6,11 @@ from collections import abc
 from contextlib import contextmanager
 from typing import Union
 
-import sqlalchemy as sa
-import sqlalchemy.orm
 from sqlalchemy import MetaData
+
+import sqlalchemy as sa
+
+from jessiql.util import sacompat
 
 
 @contextmanager
@@ -133,7 +135,7 @@ def check_recreate_necessary(bind: EngineOrConnection, metadata: MetaData) -> bo
 def get_metadata(obj: Union[MetaData, type]) -> MetaData:
     """ Get metadata (DB structure) from an object """
     # Declarative class
-    if isinstance(obj, sa.orm.DeclarativeMeta):  # type: ignore[attr-defined]  # sqlalchemy moved the definition but stubs are not up to date
+    if isinstance(obj, sacompat.DeclarativeMeta):  # type: ignore[attr-defined]  # sqlalchemy moved the definition but stubs are not up to date
         return obj.metadata  # type: ignore[union-attr]  # it things that `type` has no metadata
     # MetaData object
     elif isinstance(obj, MetaData):

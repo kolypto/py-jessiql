@@ -7,6 +7,8 @@ from jessiql.query_object import QueryObject, SelectQuery
 from jessiql.sainfo.columns import resolve_column_by_name
 from jessiql.sautil.adapt import LeftRelationshipColumnsAdapter
 from jessiql.typing import SAModelOrAlias
+from jessiql.sainfo.version import SA_13
+
 from .base import Operation
 
 
@@ -28,15 +30,24 @@ class SelectOperation(Operation):
         # Add columns to Select
         # This includes our columns and foreign keys for related objects as well!
         selected_columns = list(self.compile_columns())
-        stmt = stmt.add_columns(*selected_columns)
+
+        if SA_13:
+            for col in selected_columns:
+                stmt.append_column(col)
+        else:
+            stmt = stmt.add_columns(*selected_columns)
 
         # If no columns were selected, use the primary key
         # This is because SQL does not tolerate empty queries.
         # We could have used constant `1`, but where's fun in that :)
         if len(selected_columns) == 0:
-            stmt = stmt.add_columns(
-                *sa.orm.class_mapper(self.target_Model).primary_key
-            )
+            if SA_13:
+                for col in sa.orm.class_mapper(self.target_Model).primary_key:
+                    stmt.append_column(col)
+            else:
+                stmt = stmt.add_columns(
+                    *sa.orm.class_mapper(self.target_Model).primary_key
+                )
 
         # Done
         return stmt

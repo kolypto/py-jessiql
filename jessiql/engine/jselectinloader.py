@@ -7,6 +7,7 @@ from typing import Union
 import sqlalchemy as sa
 import sqlalchemy.orm.strategies
 
+from jessiql.sainfo.version import SA_13, SA_14
 from jessiql.sautil.adapt import SimpleColumnsAdapter
 from jessiql.typing import SAModelOrAlias, SARowDict
 
@@ -149,14 +150,25 @@ class JSelectInLoader:
         # [o] bundle_sql = bundle_ent.__clause_element__()
         # [o] q = Select._create_raw_select(
         # [o] _raw_columns=[bundle_sql, entity_sql],
-        q = q.add_columns(*pk_cols)  # [CUSTOMIZED]
+        if SA_13:
+            for col in pk_cols:
+                q.append_column(col)
+        else:
+            q = q.add_columns(*pk_cols)  # [CUSTOMIZED]
 
         # [o] q = q.filter(in_expr.in_(sql.bindparam("primary_keys")))
-        q = q.filter(
-            adapter.replace(  # [ADDED] adapter
-                self.query_info.in_expr.in_(sa.sql.bindparam("primary_keys"))
+        if SA_13:
+            q = q.where(
+                adapter.replace(  # [ADDED] adapter
+                    self.query_info.in_expr.in_(sa.sql.bindparam("primary_keys", expanding=True))
+                )
             )
-        )
+        else:
+            q = q.filter(
+                adapter.replace(  # [ADDED] adapter
+                    self.query_info.in_expr.in_(sa.sql.bindparam("primary_keys"))
+                )
+            )
 
         return q
 
@@ -195,11 +207,11 @@ class JSelectInLoader:
 
             # [o] data = collections.defaultdict(list)
             data: dict[tuple, list[dict]] = collections.defaultdict(list)
-            for k, v in itertools.groupby(
+            for k, v in itertools.groupby(  # type: ignore[call-overload]
                     # [o] context.session.execute(
                     # [o] q, params={"primary_keys": primary_keys}
                     # [CUSTOMIZED]
-                    connection.execute(q, {"primary_keys": primary_keys}).mappings(),#.unique()
+                    connection.execute(q, {"primary_keys": primary_keys}),
                     lambda row: get_foreign_key_tuple(row, self.query_info),  # type: ignore[arg-type]
             ):
                 # [o] data[k].extend(vv[1] for vv in v)
@@ -255,7 +267,7 @@ class JSelectInLoader:
                 for row in connection.execute(q, {"primary_keys": [
                     key[0] if self.query_info.zero_idx else key
                     for key in chunk
-                ]}).mappings()
+                ]})
             }
 
             # [o]

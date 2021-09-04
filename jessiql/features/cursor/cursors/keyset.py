@@ -7,6 +7,7 @@ from typing import Optional, NamedTuple
 import sqlalchemy as sa
 
 from jessiql import exc
+from jessiql.sainfo.version import SA_14
 from jessiql.typing import SARowDict, SAModelOrAlias
 from jessiql.engine.query import Query
 from jessiql.query_object import QueryObject, SortingDirection
@@ -164,7 +165,10 @@ class KeysetCursor(CursorImplementation[KeysetPageInfo, KeysetCursorData]):
 
         # Paginate
         # We will always load one more row to check if there's a next page
-        return stmt.filter(filter_expression).limit(limit + 1)
+        if SA_14:
+            return stmt.filter(filter_expression).limit(limit + 1)
+        else:
+            return stmt.where(filter_expression).limit(limit + 1)
 
     @classmethod
     def inspect_data_rows(cls, cursor_value: Optional[KeysetCursorData], query_executor: Query, rows: list[SARowDict]) -> KeysetPageInfo:
