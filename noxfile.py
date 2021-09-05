@@ -28,11 +28,11 @@ FASTAPI_VERSIONS = [
 def tests(session: nox.sessions.Session, *, overrides: dict[str, str] = {}):
     """ Run all tests """
     # This approach works better locally: install from requirements.txt
-    # session.install(*requirements_txt, '.')
+    session.install(*requirements_txt, '.')
 
-    # This approach works faster on GitHub actions: install with Poetry
-    session.install('poetry')
-    session.run('poetry', 'install')
+    # This approach works ok on GitHub but fails locally because we have Poetry within Poetry
+    # session.install('poetry')
+    # session.run('poetry', 'install')
 
     if overrides:
         session.install(*(f'{name}=={version}' for name, version in overrides.items()))
@@ -68,4 +68,4 @@ import tempfile, subprocess
 with tempfile.NamedTemporaryFile('w+') as f:
     subprocess.run(f'poetry export --no-interaction --dev --format requirements.txt --without-hashes --output={f.name}', shell=True, check=True)
     f.seek(0)
-    requirements_txt = f.readlines()
+    requirements_txt = [line.split(';', 1)[0] for line in f.readlines()]  # after ";" go some Python version specifiers

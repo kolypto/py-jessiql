@@ -34,9 +34,7 @@ jobs:
         key: ${{ runner.os }}-nox-1-${{ matrix.python-version }}-${{ hashFiles('**/pyproject.toml', '**/noxfile.py') }}  # cache key
         restore-keys: |
           ${{ runner.os }}-nox-1-${{ matrix.python-version }}-
-    - run: pip install poetry
-    - run: poetry config virtualenvs.create false
-    - run: poetry install
+    - run: pip install nox poetry
     - run: nox --report nox-report.json
 
     services:
