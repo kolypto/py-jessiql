@@ -27,10 +27,13 @@ FASTAPI_VERSIONS = [
 @nox.session(python=PYTHON_VERSIONS)
 def tests(session: nox.sessions.Session, *, overrides: dict[str, str] = {}):
     """ Run all tests """
-    # session.install(*requirements(overrides), '.')
+    # This approach works better locally: install from requirements.txt
+    session.install(*requirements_txt, '.')
 
-    session.install('poetry')
-    session.run('poetry', 'install')
+    # This approach works faster on GitHub actions: install with Poetry
+    # session.install('poetry')
+    # session.run('poetry', 'install')
+
     if overrides:
         session.install(*(f'{name}=={version}' for name, version in overrides.items()))
 
@@ -66,16 +69,3 @@ with tempfile.NamedTemporaryFile('w+') as f:
     subprocess.run(f'poetry export --no-interaction --dev --format requirements.txt --without-hashes --output={f.name}', shell=True, check=True)
     f.seek(0)
     requirements_txt = f.readlines()
-
-def requirements(overrides: dict[str, str]) -> list[str]:
-    # Filter requirements (to avoid conflicting requirements)
-    requirements = [
-        line.split(';', 1)[0]  # Example: "sqlalchemy==1.4.23; (python_version >= "2.7" and python_full_version < "3.0.0") or (python_full_version >= "3.6.0")"
-        for line in requirements_txt
-        if not any(line.startswith(f'{override}==') for override in overrides)
-    ]
-    # Merge with overrides
-    return [
-        *requirements,
-        *[f'{name}=={version}' for name, version in overrides.items()]
-    ]
