@@ -27,12 +27,12 @@ FASTAPI_VERSIONS = [
 @nox.session(python=PYTHON_VERSIONS)
 def tests(session: nox.sessions.Session, *, overrides: dict[str, str] = {}):
     """ Run all tests """
-    session.install(*requirements(overrides), '.')
+    # session.install(*requirements(overrides), '.')
 
-    # session.install('poetry')
-    # session.run('poetry', 'install')
-    # if overrides:
-    #     session.run('poetry', 'run', 'pip', 'install', *(f'{name}=={version}' for name, version in overrides.items()))
+    session.install('poetry')
+    session.run('poetry', 'install')
+    if overrides:
+        session.install(*(f'{name}=={version}' for name, version in overrides.items()))
 
     # Test
     session.run('pytest', 'tests/', '--ignore=tests/test_mypy.py', '--cov=jessiql')
