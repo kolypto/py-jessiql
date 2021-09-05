@@ -28,11 +28,11 @@ FASTAPI_VERSIONS = [
 def tests(session: nox.sessions.Session, *, overrides: dict[str, str] = {}):
     """ Run all tests """
     # This approach works better locally: install from requirements.txt
-    session.install(*requirements_txt, '.')
+    # session.install(*requirements_txt, '.')
 
     # This approach works faster on GitHub actions: install with Poetry
-    # session.install('poetry')
-    # session.run('poetry', 'install')
+    session.install('poetry')
+    session.run('poetry', 'install')
 
     if overrides:
         session.install(*(f'{name}=={version}' for name, version in overrides.items()))
