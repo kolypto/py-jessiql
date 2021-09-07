@@ -1,6 +1,8 @@
+import pytest
 import subprocess
 
 
+@pytest.mark.extra
 def test_mypy():
     """ Test the code with mypy """
     res = subprocess.run('mypy', shell=True)

@@ -29,7 +29,7 @@ def tests(session: nox.sessions.Session, *, overrides: dict[str, str] = {}):
         session.install(*(f'{name}=={version}' for name, version in overrides.items()))
 
     # Test
-    args = ['--ignore=tests/test_mypy.py']
+    args = ['-k', 'not extra']
     if not overrides:
         args.append('--cov=myproject')
 

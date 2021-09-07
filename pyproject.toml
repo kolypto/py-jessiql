@@ -14,11 +14,18 @@ nox = "^2020.8.22"
 pytest = "^6.0.1"
 pytest-cov = "^2.10.1"
 
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
+
+
 [tool.pytest.ini_options]
 testpaths = [
     "tests/",
 ]
 
-[build-system]
-requires = ["poetry-core>=1.0.0"]
-build-backend = "poetry.core.masonry.api"
+# all markers: $ pytest --markers
+markers = [
+    'extra: optional tests (mypy, etc)'
+]
