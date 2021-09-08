@@ -1,6 +1,7 @@
 from typing import Union
 
 import sqlalchemy as sa
+import sqlalchemy.orm
 
 
 # Annotation for SqlAlchemy models
