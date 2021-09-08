@@ -7,10 +7,7 @@ from __future__ import annotations
 
 from functools import singledispatch
 
-from sqlalchemy.orm.attributes import (
-    InstrumentedAttribute,
-)
-
+from jessiql import exc
 from jessiql.sainfo.columns import resolve_column_by_name, is_array, is_json
 from jessiql.sainfo.relations import resolve_relation_by_name
 from jessiql.typing import SAModelOrAlias
@@ -118,6 +115,11 @@ def resolve_sorting_field(field: SortingField, Model: SAModelOrAlias, *, where: 
 
     # Populate the missing fields
     field.property = attribute.property
+    field.is_json = is_json(attribute)
+
+    # Check: dot-notation (sub-path) is only supported for json fields
+    if field.sub_path and not field.is_json:
+        raise exc.QueryObjectError(f'Field "{field.name}" does not support dot-notation')
 
 
 @resolve_input_element.register
@@ -137,5 +139,9 @@ def resolve_filtering_field_expression(expression: FieldFilterExpression, Model:
     expression.property = attribute.property
     expression.is_array = is_array(attribute)
     expression.is_json = is_json(attribute)
+
+    # Check: dot-notation (sub-path) is only supported for json fields
+    if expression.sub_path and not expression.is_json:
+        raise exc.QueryObjectError(f'Field "{expression.name}" does not support dot-notation')
 
 # endregion

@@ -19,6 +19,8 @@ from .util.test_queries import typical_test_sql_query_text, typical_test_query_r
     (dict(sort=['a-']), 'ORDER BY a.a DESC'),
     # Sort: many fields
     (dict(sort=['a', 'b+', 'c-']), 'ORDER BY a.a ASC, a.b ASC, a.c DESC'),
+    # Sort: JSON
+    (dict(sort=['j.user.id']), "ORDER BY j #>> ('user', 'id') ASC"),  # TODO: (tag:postgres-only) this is a PostgreSQL-specific expression
 ])
 def test_sort_sql(connection: sa.engine.Connection, query_object: QueryObjectDict, expected_query_lines: list[str]):
     """ Typical test: what SQL is generated """
@@ -36,6 +38,8 @@ def test_sort_sql(connection: sa.engine.Connection, query_object: QueryObjectDic
     # Test: sort ASC, DESC
     (dict(sort=['id+']), [{'id': n} for n in (1, 2, 3)]),
     (dict(sort=['id-']), [{'id': n} for n in (3, 2, 1)]),
+    # Test: sort JSON
+    (dict(sort=['j.m-']), [{'id': n} for n in (3, 2, 1)]),
 ])
 def test_sort_results(connection: sa.engine.Connection, query_object: QueryObjectDict, expected_results: list[dict]):
     """ Typical test: real data, real query, real results """

@@ -1,4 +1,5 @@
 import sqlalchemy as sa
+import sqlalchemy.dialects.postgresql as pg
 
 # Manyfields: a helper/mixin to have many fields at once
 
@@ -10,6 +11,8 @@ class ManyFieldsMixin:
     c = sa.Column(sa.String)
     d = sa.Column(sa.String)
 
+    j = sa.Column(pg.JSON)  # TODO: (tag:postgres-only) this column type is only supported by PostgreSQL
+
 
 def manyfields(prefix: str, n: int):
     """ Make a dict for a ManyFields object
@@ -19,11 +22,14 @@ def manyfields(prefix: str, n: int):
             id=1,
             **manyfields('user', 1),
         )
-        => User(id=1, a='user-1-a', b='user-1-b', c='user-1-c', d='user-1-d')
+        => User(id=1, a='user-1-a', b='user-1-b', c='user-1-c', d='user-1-d', j={'user': '1-j'})
     """
     return {
-        k: f'{prefix}-{n}-{k}'
-        for k in 'abcd'
+        **{
+            k: f'{prefix}-{n}-{k}'
+            for k in 'abcd'
+        },
+        'j': {prefix: f'{n}-j'},
     }
 
 

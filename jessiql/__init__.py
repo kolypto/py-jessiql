@@ -14,8 +14,8 @@ from .features.cursor import QueryPage, PageLinks
 # TODO: a tool to apply JessiQL Query Object to plain lists & dicts (to fake behavior for non-JessiQL APIs).
 #   To achieve that, implement a Query-like engine object that processes Python objects
 
-# TODO: JSON & JSONB objects, attribute access for filter, sort, select
-#   > { filter: { "meta.id": 10 } }
+# TODO: pluck JSON & JSONB attribute with dot-notation in 'select'?
+#   > { select: ["meta.id"] }
 # TODO: support @property and @hybrid_property
 #   This includes: select, sort, filter
 # TODO: filter by related objects
@@ -26,3 +26,5 @@ from .features.cursor import QueryPage, PageLinks
 #   > generate URLs, generate akeyset conditions
 
 # TODO: use baked queries in JSelectInLoader to speed things up
+
+# TODO: support other databases (MySQL?) See (tag:postgres-only)

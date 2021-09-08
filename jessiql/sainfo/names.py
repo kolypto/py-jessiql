@@ -1,4 +1,4 @@
-from typing import Union
+from typing import Union, Optional
 
 try:
     # Python 3.9+

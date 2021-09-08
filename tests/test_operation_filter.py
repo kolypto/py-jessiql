@@ -47,6 +47,12 @@ from .util.test_queries import typical_test_sql_query_text, typical_test_query_r
     (dict(filter={'tags': {'$in': ['a', 'b', 'c']}}), ["WHERE a.tags && CAST(ARRAY[a, b, c] AS VARCHAR[])"]),
     (dict(filter={'tags': {'$nin': ['a', 'b', 'c']}}), ["WHERE NOT a.tags && CAST(ARRAY[a, b, c] AS VARCHAR[])"]),
     (dict(filter={'tags': {'$all': ['a', 'b', 'c']}}), ["WHERE a.tags @> CAST(ARRAY[a, b, c] AS VARCHAR[])"]),
+    # Comparison with a JSON value
+    # It is important to cast it to a correct value
+    (dict(filter={'j.user.name': 'kolypto'}), ["WHERE CAST((a.j #>> ('user', 'name')) AS TEXT) = kolypto"]),
+    (dict(filter={'j.user.name': 10}), ["WHERE CAST((a.j #>> ('user', 'name')) AS INTEGER) = 10"]),
+    (dict(filter={'j.user.name': True}), ["WHERE CAST((a.j #>> ('user', 'name')) AS BOOLEAN) = true"]),
+    (dict(filter={'j.user.name': None}), ["WHERE CAST((a.j #>> ('user', 'name')) AS TEXT) IS NULL"]),
 ])
 def test_filter_sql(connection: sa.engine.Connection, query_object: QueryObjectDict, expected_query_lines: list[str]):
     """ Typical test: what SQL is generated """
@@ -69,6 +75,8 @@ def test_filter_sql(connection: sa.engine.Connection, query_object: QueryObjectD
     # Filter by column
     (dict(filter={'a': 'not-found'}), []),
     (dict(filter={'a': 'm-1-a'}), [{'id': 1}]),
+    # Filter by JSON value
+    (dict(filter={'j.m': '1-j'}), [{'id': 1}]),
 ])
 def test_filter_results(connection: sa.engine.Connection, query_object: QueryObjectDict, expected_results: list[dict]):
     """ Typical test: real data, real query, real results """

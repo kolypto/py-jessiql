@@ -6,6 +6,7 @@ from .base import Operation
 from jessiql.sainfo.columns import resolve_column_by_name
 from jessiql.query_object import SortQuery, SortingDirection
 from jessiql.typing import SAModelOrAlias
+from jessiql.util.expressions import json_field_subpath_as_text
 
 
 # TODO: expose a control that lets the user choose between NULLS FIRST and NULLS LAST?
@@ -21,6 +22,10 @@ class SortOperation(Operation):
     Handles: QueryObject.sort
     When applied to a statement:
     * Adds ORDER BY with columns and sorting defined by the user
+
+    Supports:
+    * Column names
+    * JSON sub-objects (via dot-notation)
     """
 
     def apply_to_statement(self, stmt: sa.sql.Select) -> sa.sql.Select:
@@ -47,10 +52,15 @@ def get_sort_fields_with_direction(sort: SortQuery, Model: SAModelOrAlias, *, wh
     # Go over every field provided by the user
     for field in sort.fields:
         # Resolve its name
-        attribute = resolve_column_by_name(field.name, Model, where=where)
+        expr = resolve_column_by_name(field.name, Model, where=where)
+
+        # JSON path?
+        if field.sub_path:
+            assert field.is_json  # already verified by resolve_sorting_field()
+            expr = json_field_subpath_as_text(expr, field.sub_path)
 
         # Make a sorting expression, depending on the direction
         if field.direction == SortingDirection.DESC:
-            yield attribute.desc().nullslast()
+            yield expr.desc().nullslast()
         else:
-            yield attribute.asc().nullslast()
+            yield expr.asc().nullslast()

@@ -7,10 +7,10 @@ import sqlalchemy as sa
 from jessiql.typing import SAAttribute, SAModelOrAlias
 from jessiql.query_object import QueryObject
 from jessiql.sautil.adapt import SimpleColumnsAdapter
+from jessiql.sainfo.version import SA_14
 
 from .base import Operation
 from .sort import get_sort_fields_with_direction
-from ..sainfo.version import SA_14
 
 
 class SkipLimitOperation(Operation):

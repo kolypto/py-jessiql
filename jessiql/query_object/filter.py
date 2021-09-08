@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections import abc
-from typing import Any, Union
+from typing import Any, Union, Optional
 from dataclasses import dataclass
 
 import itertools
@@ -12,13 +12,19 @@ import sqlalchemy as sa
 from jessiql import exc
 from jessiql.util.dataclasses import dataclass_notset
 from jessiql.util.funcy import collecting
+from jessiql.util.expressions import parse_dot_notation
 
 from .base import OperationInputBase
 
 
 @dataclass
 class FilterQuery(OperationInputBase):
-    """ Query Object operation: the "filter" operation """
+    """ Query Object operation: the "filter" operation
+
+    Supports:
+    * Column names
+    * JSON sub-objects (via dot-notation)
+    """
     # List of conditions: field conditions and/or boolean conditions
     conditions: list[FilterExpressionBase]
 
@@ -52,13 +58,15 @@ class FilterQuery(OperationInputBase):
 
     @classmethod
     def _parse_input_field_expressions(cls, field_name: str, value: Union[dict[str, Any], Any]):
+        name, sub_path = parse_dot_notation(field_name)
+
         # If the value is not a dict, it's a shortcut: { key: value }
         if not isinstance(value, dict):
-            yield FieldFilterExpression(field=field_name, operator='$eq', value=value)  # type: ignore[call-arg]
+            yield FieldFilterExpression(field=name, operator='$eq', value=value, sub_path=sub_path)  # type: ignore[call-arg]
         # If the value is a dict, every item will be an operator and an operand
         else:
             for operator, operand in value.items():
-                yield FieldFilterExpression(field=field_name, operator=operator, value=operand)  # type: ignore[call-arg]
+                yield FieldFilterExpression(field=name, operator=operator, value=operand, sub_path=sub_path)  # type: ignore[call-arg]
 
     @classmethod
     def _parse_input_boolean_expression(cls, operator: str, conditions: Union[dict, list[dict]]):
@@ -103,15 +111,25 @@ class FieldFilterExpression(FilterExpressionBase):
     operator: str
     value: Any
 
+    # Parsed dot-notation: "field.sub.sub"
+    # Applicable to JSON fields
+    sub_path: Optional[tuple[str, ...]]
+
     # Populated when resolved by resolve_filtering_expression()
     property: sa.orm.ColumnProperty
     is_array: bool
     is_json: bool
 
-    __slots__ = 'name', 'operator', 'value', 'property', 'is_array', 'is_json'
+    __slots__ = 'name', 'operator', 'value', 'sub_path', 'property', 'is_array', 'is_json'
 
     def export(self) -> dict:
-        return {self.field: {self.operator: self.value}}
+        return {self._field_expression(): {self.operator: self.value}}
+
+    def _field_expression(self):
+        if not self.sub_path:
+            return self.field
+        else:
+            return '.'.join((self.name,) + self.sub_path)
 
 
 @dataclass
