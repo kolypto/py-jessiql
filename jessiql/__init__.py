@@ -22,8 +22,6 @@ from .features.cursor import QueryPage, PageLinks
 #   > { filter: { "user.articles.id": 10 } }
 # TODO: aggregation
 #   > min, max, sum, avg + filter
-# TODO: pagination URL generation for (skip,limit) and for akeyset pagination
-#   > generate URLs, generate akeyset conditions
 
 # TODO: use baked queries in JSelectInLoader to speed things up
 
