@@ -12,7 +12,7 @@ import sqlalchemy as sa
 import sqlalchemy.orm
 
 from jessiql import exc
-from jessiql.typing import SAAttribute
+from jessiql.typing import SAAttribute, saproperty
 from jessiql.sainfo.names import field_name
 from jessiql.util.dataclasses import dataclass_notset
 from jessiql.util.funcy import collecting
@@ -119,11 +119,11 @@ class SelectedField:
     name: str
 
     # Populated when resolved by resolve_selected_field()
-    property: Union[sa.orm.ColumnProperty, property]
+    property: Union[sa.orm.ColumnProperty, saproperty]
     is_array: bool
     is_json: bool
     is_property: bool
-    property_loads: Optional[frozenset[str]]
+    property_loads: Optional[abc.Sequence[str]]
 
     __slots__ = 'name', 'property', 'is_array', 'is_json', 'is_property', 'property_loads'
 

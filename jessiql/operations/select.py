@@ -86,9 +86,11 @@ class SelectOperation(Operation):
         ]
 
         if properties:
+            # For every row, evaluate @property-ies against it
             for row in rows:
                 for field in properties:
-                    row[field.name] = evaluate_property_on_dict(field.property, row)
+                    # Assign new value
+                    row[field.name] = evaluate_property_on_dict(field.property, row)  # type: ignore[arg-type]
 
         return rows
 
@@ -109,7 +111,7 @@ def select_fields(select: SelectQuery, Model: SAModelOrAlias, *, where: str) -> 
             # Resolve @property to columns using the information from @loads_attributes
             yield from (
                 resolve_column_by_name(name, Model, where=where)
-                for name in field.property_loads
+                for name in field.property_loads  # type: ignore[union-attr]
             )
         else:
             # Resolve it to a column

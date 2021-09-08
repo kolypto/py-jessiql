@@ -313,8 +313,8 @@ class QueryExecutor:
     def _apply_operations_to_results(self, rows: list[SARowDict]) -> list[SARowDict]:
         """ Apply all operations to the result set """
         # Apply operations
-        for handler in [self.select_op, self.filter_op, self.sort_op, self.skiplimit_op]:
-            rows = handler.apply_to_results(self, rows)
+        for op in [self.select_op, self.filter_op, self.sort_op, self.skiplimit_op]:
+            rows = op.apply_to_results(self, rows)
 
         # Apply customization handlers
         for handler in self.customize_results:

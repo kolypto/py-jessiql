@@ -12,7 +12,7 @@ from .base import Operation
 from jessiql.query_object.filter import FilterExpressionBase, FieldFilterExpression, BooleanFilterExpression
 from jessiql import exc
 from jessiql.sainfo.columns import resolve_column_by_name
-from jessiql.typing import SAModelOrAlias
+from jessiql.typing import SAModelOrAlias, SAAttribute
 from jessiql.sainfo.version import SA_13
 from jessiql.util.expressions import json_field_subpath_as_text
 
@@ -273,6 +273,8 @@ class FilterOperation(Operation):
 
 
 def get_field_for_filtering(condition: FieldFilterExpression, Model: SAModelOrAlias, *, where: str):
+    expr: Union[SAAttribute, sa.sql.elements.BinaryExpression]
+
     expr = resolve_column_by_name(condition.field, Model, where=where)
 
     # JSON path?

@@ -4,7 +4,7 @@ import dis
 import inspect
 from functools import lru_cache
 from collections import abc
-from typing import Optional, TypeVar, Union
+from typing import Optional, TypeVar
 
 import sqlalchemy as sa
 import sqlalchemy.orm
@@ -13,13 +13,12 @@ import sqlalchemy.ext.hybrid
 from jessiql import exc
 from jessiql.sainfo.models import unaliased_class
 from jessiql.sainfo.names import model_name
-from jessiql.typing import SAModelOrAlias
-
+from jessiql.typing import SAModelOrAlias, saproperty
 
 SameFunction = TypeVar('SameFunction')
 
 
-def resolve_property_by_name(field_name: str, Model: SAModelOrAlias, *, where: str) -> Union[property, sa.ext.hybrid.hybrid_property]:
+def resolve_property_by_name(field_name: str, Model: SAModelOrAlias, *, where: str) -> saproperty:
     attribute = get_all_model_properties(unaliased_class(Model))[field_name]  # raises: KeyError
 
     # Sanity check
@@ -33,7 +32,7 @@ def resolve_property_by_name(field_name: str, Model: SAModelOrAlias, *, where: s
     return attribute
 
 
-def loads_attributes(*attribute_names: str, check: bool = True) -> abc.Callable:
+def loads_attributes(*attribute_names: str, check: bool = True) -> abc.Callable[[SameFunction], SameFunction]:
     """ Mark a @property with the list of attributes that it uses.
 
     Loaders that support it will take the information into account and try to avoid numerous lazy-loads.
@@ -56,8 +55,8 @@ def loads_attributes(*attribute_names: str, check: bool = True) -> abc.Callable:
     def wrapper(fget: SameFunction) -> SameFunction:
         # Check by reading the code
         if check:
-            code_uses = tuple(func_uses_attributes(fget))
-            mismatched_attribute = code_uses.symmetric_difference(attribute_names)
+            code_uses = tuple(func_uses_attributes(fget))  # type: ignore[arg-type]
+            mismatched_attribute = set(code_uses).symmetric_difference(attribute_names)
             assert not mismatched_attribute, (
                 f'Your @property uses different attributes from what it has described. '
                 f'Mismatch: {mismatched_attribute}'
@@ -69,7 +68,7 @@ def loads_attributes(*attribute_names: str, check: bool = True) -> abc.Callable:
     return wrapper
 
 
-def loads_attributes_readcode(*extra_attribute_names: str) -> abc.Callable:
+def loads_attributes_readcode(*extra_attribute_names: str) -> abc.Callable[[SameFunction], SameFunction]:
     """ Mark a @property with @loads_attributes(), read those attributes' names from the code
 
     This decorator will extract all accessed attribute names from the code; you won't have to maintain the list.
@@ -80,7 +79,7 @@ def loads_attributes_readcode(*extra_attribute_names: str) -> abc.Callable:
     """
     def wrapper(fget: SameFunction) -> SameFunction:
         return loads_attributes(
-            *func_uses_attributes(fget),
+            *func_uses_attributes(fget),  # type: ignore[arg-type]
             *extra_attribute_names,
             check=False
         )(fget)
@@ -92,10 +91,10 @@ def is_annotated_with_loads(prop: property) -> bool:
     return hasattr(prop.fget, '_loads_attributes')
 
 
-def get_property_loads_attribute_names(prop: property) -> Optional[tuple[str, ...]]:
+def get_property_loads_attribute_names(prop: saproperty) -> Optional[tuple[str, ...]]:
     """ Get the list of attributes that a property requires """
     try:
-        return prop.fget._loads_attributes
+        return prop.fget._loads_attributes  # type: ignore[union-attr]
     except AttributeError:
         return None
 
@@ -139,9 +138,9 @@ def get_all_model_properties(Model: type) -> dict[str, property]:
     return properties
 
 
-def is_property(Model: type, attribute_name: str) -> bool:
+def is_property(Model: SAModelOrAlias, attribute_name: str) -> bool:
     """ Is the provided value a @property? """
-    return attribute_name in get_all_model_properties(Model)
+    return attribute_name in get_all_model_properties(unaliased_class(Model))
 
 
 def func_uses_attributes(func: abc.Callable) -> abc.Iterator[str]:
@@ -161,10 +160,11 @@ def code_uses_attributes(code, object_name: str = 'self') -> abc.Iterator[str]:
     # or
     #   Instruction(opname='LOAD_FAST', argval='self') followed by
     #   Instruction(opname='STORE_ATTR', argval='<attr-name>')
-    prev_instruction = None
+    prev_instruction: Optional[dis.Instruction] = None
     for instruction in dis.get_instructions(code):
         if (
             instruction.opname in ('LOAD_ATTR', 'STORE_ATTR') and
+            prev_instruction and
             prev_instruction.opname == 'LOAD_FAST' and
             prev_instruction.argval == object_name
             ):

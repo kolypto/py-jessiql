@@ -8,6 +8,7 @@ from __future__ import annotations
 from functools import singledispatch
 
 from jessiql import exc
+from jessiql.sainfo.models import unaliased_class
 from jessiql.sainfo.columns import resolve_column_by_name, is_array, is_json
 from jessiql.sainfo.relations import resolve_relation_by_name
 from jessiql.sainfo.properties import is_property, resolve_property_by_name, get_property_loads_attribute_names
@@ -20,6 +21,7 @@ from .filter import FilterQuery, FieldFilterExpression, BooleanFilterExpression
 
 
 # region Resolve operations' inputs
+
 
 @singledispatch
 def resolve_input(_, Model: SAModelOrAlias, *, where: str):
@@ -91,6 +93,7 @@ def resolve_input_element(_, Model: SAModelOrAlias, *, where: str):
 def resolve_selected_field(field: SelectedField, Model: SAModelOrAlias, *, where: str):
     # Is it a @property?
     if is_property(Model, field.name):
+        Model = unaliased_class(Model)
         attribute = resolve_property_by_name(field.name, Model, where='select')
 
         field.is_property = True
@@ -152,6 +155,6 @@ def resolve_filtering_field_expression(expression: FieldFilterExpression, Model:
 
     # Check: dot-notation (sub-path) is only supported for json fields
     if expression.sub_path and not expression.is_json:
-        raise exc.QueryObjectError(f'Field "{expression.name}" does not support dot-notation')
+        raise exc.QueryObjectError(f'Field "{expression.field}" does not support dot-notation')
 
 # endregion

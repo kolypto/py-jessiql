@@ -1,11 +1,12 @@
 from collections import abc
+from typing import Union
 
 import sqlalchemy as sa
 
 from .base import Operation
 from jessiql.sainfo.columns import resolve_column_by_name
 from jessiql.query_object import SortQuery, SortingDirection
-from jessiql.typing import SAModelOrAlias
+from jessiql.typing import SAModelOrAlias, SAAttribute
 from jessiql.util.expressions import json_field_subpath_as_text
 
 
@@ -51,6 +52,8 @@ def get_sort_fields_with_direction(sort: SortQuery, Model: SAModelOrAlias, *, wh
     """
     # Go over every field provided by the user
     for field in sort.fields:
+        expr: Union[SAAttribute, sa.sql.elements.BinaryExpression]
+
         # Resolve its name
         expr = resolve_column_by_name(field.name, Model, where=where)
 

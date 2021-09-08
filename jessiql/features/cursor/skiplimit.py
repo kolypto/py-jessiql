@@ -125,7 +125,7 @@ class CursorLimitOperation(SkipLimitOperation):
         else:
             return self._apply_cursor_pagination(stmt)
 
-    def apply_to_results(self, query_executor: Query, rows: list[dict]) -> list[dict]:
+    def apply_to_results(self, query_executor: Query, rows: list[dict]) -> list[dict]:  # type: ignore[override]
         self.cursor_impl = self.cursor_type.init_for_data_rows(self.cursor_value, query_executor, rows)
         return rows
 
