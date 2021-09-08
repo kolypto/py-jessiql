@@ -1,4 +1,7 @@
+from __future__ import annotations
+
 from collections import abc
+from typing import TYPE_CHECKING
 
 import sqlalchemy as sa
 import sqlalchemy.orm
@@ -10,6 +13,10 @@ from jessiql.typing import SAModelOrAlias
 from jessiql.sainfo.version import SA_13
 
 from .base import Operation
+from ..sautil.properties import evaluate_property_on_dict
+
+if TYPE_CHECKING:
+    from jessiql.engine.query_executor import QueryExecutor
 
 
 class SelectOperation(Operation):
@@ -19,6 +26,11 @@ class SelectOperation(Operation):
     When applied to a statement:
     * Adds SELECT column names that the user selected
     * Adds SELECT column names that are required for loading related objects
+
+    Supports:
+    * Columns
+    * @property
+    * @hybrid_property
     """
 
     def __init__(self, query: QueryObject, target_Model: SAModelOrAlias):
@@ -65,6 +77,21 @@ class SelectOperation(Operation):
         # Note: duplicate columns will be removed automatically by the select() method
         yield from select_local_columns_for_relations(self.query.select, self.target_Model, where='select')
 
+    def apply_to_results(self, query_executor: QueryExecutor, rows: list[dict]) -> list[dict]:
+        # Execute @property functions against the result
+        properties = [
+            field
+            for field in self.query.select.fields.values()
+            if field.is_property
+        ]
+
+        if properties:
+            for row in rows:
+                for field in properties:
+                    row[field.name] = evaluate_property_on_dict(field.property, row)
+
+        return rows
+
 
 def select_fields(select: SelectQuery, Model: SAModelOrAlias, *, where: str) -> abc.Iterator[sa.sql.ColumnElement]:
     """ Get a list of columns that this QueryObject.select wants loaded
@@ -78,8 +105,15 @@ def select_fields(select: SelectQuery, Model: SAModelOrAlias, *, where: str) -> 
     """
     # Go over every field
     for field in select.fields.values():
-        # Resolve it to a column
-        yield resolve_column_by_name(field.name, Model, where=where)
+        if field.is_property:
+            # Resolve @property to columns using the information from @loads_attributes
+            yield from (
+                resolve_column_by_name(name, Model, where=where)
+                for name in field.property_loads
+            )
+        else:
+            # Resolve it to a column
+            yield resolve_column_by_name(field.name, Model, where=where)
 
 
 def select_local_columns_for_relations(select: SelectQuery, Model: SAModelOrAlias, *, where: str):

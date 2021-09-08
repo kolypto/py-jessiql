@@ -8,6 +8,8 @@ from . import exc
 
 from .features.cursor import QueryPage, PageLinks
 
+from .sainfo.properties import loads_attributes, loads_attributes_readcode
+
 
 # TODO: README.md
 
@@ -16,8 +18,8 @@ from .features.cursor import QueryPage, PageLinks
 
 # TODO: pluck JSON & JSONB attribute with dot-notation in 'select'?
 #   > { select: ["meta.id"] }
-# TODO: support @property and @hybrid_property
-#   This includes: select, sort, filter
+# TODO: support @hybrid_property
+#   This includes: sort, filter
 # TODO: filter by related objects
 #   > { filter: { "user.articles.id": 10 } }
 # TODO: aggregation

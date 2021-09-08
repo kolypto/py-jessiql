@@ -63,12 +63,6 @@ class CursorLimitOperation(SkipLimitOperation):
         # Cursor implementation won't be available before data rows are processed
         self.cursor_impl = None
 
-        # Register a function that will analyze result sets
-        @query_executor.customize_results.append  # type: ignore[arg-type]
-        def inspect_final_row(query_executor: Query, rows: list[dict]):
-            self.cursor_impl = self.cursor_type.init_for_data_rows(self.cursor_value, query_executor, rows)
-            return rows
-
         # Done
         return self
 
@@ -130,6 +124,10 @@ class CursorLimitOperation(SkipLimitOperation):
             return super().apply_to_statement(stmt)
         else:
             return self._apply_cursor_pagination(stmt)
+
+    def apply_to_results(self, query_executor: Query, rows: list[dict]) -> list[dict]:
+        self.cursor_impl = self.cursor_type.init_for_data_rows(self.cursor_value, query_executor, rows)
+        return rows
 
 
 def cursor_value_input(query: QueryObject) -> tuple[type[CursorImplementation], CursorData]:

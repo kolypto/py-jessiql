@@ -1,11 +1,14 @@
 import pytest
 import sqlalchemy as sa
+import sqlalchemy.ext.hybrid
 
 from jessiql import QueryObjectDict
+from jessiql.sainfo.properties import is_annotated_with_loads
 from jessiql.sainfo.version import SA_14
 from jessiql.testing.insert import insert
 from jessiql.testing.recreate_tables import created_tables
 from jessiql.util import sacompat
+from jessiql import loads_attributes_readcode
 
 from .util.models import IdManyFieldsMixin, id_manyfields
 from .util.test_queries import typical_test_sql_selected_columns, typical_test_query_results, typical_test_query_text_and_results
@@ -18,6 +21,8 @@ from .util import okok
     # Select columns
     (dict(select=['id']), ['a.id']),
     (dict(select=['a']), ['a.a']),  # NOTE: primary key not selected, not included
+    # Select properties
+    (dict(select=['abc']), ['a.a', 'a.b', 'a.c'])  # loaded columns that the property depends upon
 ])
 def test_select_sql(connection: sa.engine.Connection, query_object: QueryObjectDict, expected_columns: list[str]):
     """ Typical test: what SQL is generated """
@@ -26,6 +31,15 @@ def test_select_sql(connection: sa.engine.Connection, query_object: QueryObjectD
 
     class Model(IdManyFieldsMixin, Base):
         __tablename__ = 'a'
+
+        @property
+        @loads_attributes_readcode()
+        def abc(self):
+            raise NotImplementedError  # we don't care in this test
+            self.a, self.b, self.c  # readcode will get this
+
+    # Make sure it's detected properly
+    assert is_annotated_with_loads(Model.abc)
 
     # Test
     typical_test_sql_selected_columns(query_object, Model, expected_columns)
@@ -41,6 +55,18 @@ def test_select_sql(connection: sa.engine.Connection, query_object: QueryObjectD
     (dict(select=['a']), [
         {'a': 'm-1-a'},
     ]),
+    # Select @property
+    (dict(select=['abc']), [
+        {'a': 'm-1-a', 'b': 'm-1-b', 'c': 'm-1-c',  # loaded columns that it depends upon
+         'abc': 'm-1-a m-1-b m-1-c',  # generated value
+         },
+    ]),
+    # Select @hybrid_property
+    (dict(select=['abch']), [
+        {'a': 'm-1-a', 'b': 'm-1-b', 'c': 'm-1-c',
+         'abch': 'm-1-a m-1-b m-1-c',  # generated value
+         },
+    ]),
 ])
 def test_select_results(connection: sa.engine.Connection, query_object: QueryObjectDict, expected_results: list[dict]):
     """ Typical test: real data, real query, real results """
@@ -49,6 +75,20 @@ def test_select_results(connection: sa.engine.Connection, query_object: QueryObj
 
     class Model(IdManyFieldsMixin, Base):
         __tablename__ = 'a'
+
+        @property
+        @loads_attributes_readcode()
+        def abc(self):
+            return ' '.join((self.a, self.b, self.c))
+
+        @sa.ext.hybrid.hybrid_property
+        @loads_attributes_readcode()
+        def abch(self):
+            return ' '.join((self.a, self.b, self.c))
+
+        @abch.expression
+        def abch(cls):
+            raise NotImplementedError  # we don't care in this test
 
     # Data
     with created_tables(connection, Base):
@@ -189,6 +229,33 @@ def test_select_results(connection: sa.engine.Connection, query_object: QueryObj
          okok.Whatever,
          okok.Whatever,
      ]),
+    # === Test: @property with related models
+    ('User', dict(select=[
+        {'articles': dict(select=[
+            'abc',
+            # relation: included only to make sure the property handler won't get copied over and fail there
+            {'comments': dict(select=[])}
+        ])}
+    ]), [
+         # Articles: loaded @property attributes
+         'SELECT a.user_id, a.a, a.b, a.c, a.id',
+     ], [
+         # Main
+         {'id': 1, 'articles': [
+             # articles
+             {'id': 1, 'user_id': 1,
+              'a': 'a-1-a', 'b': 'a-1-b', 'c': 'a-1-c',
+              'abc': 'a-1-a a-1-b a-1-c',
+              'comments': okok.Whatever},
+             # articles
+             {'id': 2, 'user_id': 1,
+              'a': 'a-2-a', 'b': 'a-2-b', 'c': 'a-2-c',
+              'abc': 'a-2-a a-2-b a-2-c',
+              'comments': okok.Whatever},
+         ]},
+         okok.Whatever,
+         okok.Whatever,
+     ]),
 ])
 def test_joined_select(connection: sa.engine.Connection, model: str, query_object: QueryObjectDict, expected_query_lines: list[str], expected_results: list[dict]):
     """ Typical test: JOINs, SQL and results """
@@ -217,6 +284,11 @@ def test_joined_select(connection: sa.engine.Connection, model: str, query_objec
         author = sa.orm.relationship(User, back_populates='articles')
 
         comments = sa.orm.relationship('Comment', back_populates='article')
+
+        @property
+        @loads_attributes_readcode()
+        def abc(self):
+            return ' '.join((self.a, self.b, self.c))
 
     class Comment(IdManyFieldsMixin, Base):
         __tablename__ = 'c'

@@ -8,6 +8,7 @@ from dataclasses import dataclass
 
 import itertools
 import sqlalchemy as sa
+import sqlalchemy.orm
 
 from jessiql import exc
 from jessiql.util.dataclasses import dataclass_notset

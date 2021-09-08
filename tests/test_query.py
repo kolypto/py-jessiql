@@ -1,5 +1,6 @@
 import pytest
 import sqlalchemy as sa
+import sqlalchemy.orm
 
 from jessiql import QueryObjectDict, Query
 from jessiql.util import sacompat
@@ -15,6 +16,7 @@ from .util.test_queries import assert_query_statements_lines
         {'author': dict()},
         {'comments': dict()},
     ]), [
+        # Make sure it got executed on every level
         'WHERE a.user_id = 1',
         'AND u.id = 1',
         'AND c.user_id = 1',

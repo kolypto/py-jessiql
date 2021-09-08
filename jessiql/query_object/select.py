@@ -6,9 +6,10 @@ from collections import abc
 from dataclasses import dataclass
 
 from functools import cached_property
-from typing import Union
+from typing import Union, Optional
 
 import sqlalchemy as sa
+import sqlalchemy.orm
 
 from jessiql import exc
 from jessiql.typing import SAAttribute
@@ -21,7 +22,13 @@ from .base import OperationInputBase
 
 @dataclass
 class SelectQuery(OperationInputBase):
-    """ Query Object operation: the "select" operation """
+    """ Query Object operation: the "select" operation
+
+    Supports:
+    * Columns
+    * @property
+    * @hybrid_property
+    """
     # Selected fields: map
     fields: dict[str, SelectedField]
     # Selected relations: map
@@ -105,17 +112,20 @@ class SelectQuery(OperationInputBase):
             for relation in self.relations.values()
         }
 
-@dataclass_notset('property', 'is_array', 'is_json')
+
+@dataclass_notset('property', 'is_array', 'is_json', 'is_property', 'property_loads')
 @dataclass
 class SelectedField:
     name: str
 
     # Populated when resolved by resolve_selected_field()
-    property: sa.orm.ColumnProperty
+    property: Union[sa.orm.ColumnProperty, property]
     is_array: bool
     is_json: bool
+    is_property: bool
+    property_loads: Optional[frozenset[str]]
 
-    __slots__ = 'name', 'property', 'is_array', 'is_json'
+    __slots__ = 'name', 'property', 'is_array', 'is_json', 'is_property', 'property_loads'
 
     def export(self) -> str:
         return self.name

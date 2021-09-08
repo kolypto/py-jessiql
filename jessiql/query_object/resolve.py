@@ -10,6 +10,7 @@ from functools import singledispatch
 from jessiql import exc
 from jessiql.sainfo.columns import resolve_column_by_name, is_array, is_json
 from jessiql.sainfo.relations import resolve_relation_by_name
+from jessiql.sainfo.properties import is_property, resolve_property_by_name, get_property_loads_attribute_names
 from jessiql.typing import SAModelOrAlias
 
 from .query_object import QueryObject
@@ -88,13 +89,22 @@ def resolve_input_element(_, Model: SAModelOrAlias, *, where: str):
 
 @resolve_input_element.register
 def resolve_selected_field(field: SelectedField, Model: SAModelOrAlias, *, where: str):
-    # Get the attribute
-    attribute = resolve_column_by_name(field.name, Model, where=where)
+    # Is it a @property?
+    if is_property(Model, field.name):
+        attribute = resolve_property_by_name(field.name, Model, where='select')
 
-    # Populate the missing fields
-    field.property = attribute.property
-    field.is_array = is_array(attribute)
-    field.is_json = is_json(attribute)
+        field.is_property = True
+        field.property = attribute
+        field.property_loads = get_property_loads_attribute_names(attribute)
+    else:
+        # Get the attribute
+        attribute = resolve_column_by_name(field.name, Model, where=where)
+
+        # Populate the missing fields
+        field.is_property = False
+        field.property = attribute.property
+        field.is_array = is_array(attribute)
+        field.is_json = is_json(attribute)
 
 
 @resolve_input_element.register

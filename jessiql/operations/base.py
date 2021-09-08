@@ -34,3 +34,7 @@ class Operation:
     def apply_to_statement(self, stmt: sa.sql.Select) -> sa.sql.Select:
         """ Modify the SQL Select statement that produces resulting rows """
         raise NotImplementedError
+
+    def apply_to_results(self, query_executor: QueryExecutor, rows: list[dict]) -> list[dict]:
+        """ Customize the resulting rows """
+        return rows

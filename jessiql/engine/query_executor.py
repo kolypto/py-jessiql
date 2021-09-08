@@ -144,6 +144,7 @@ class QueryExecutor:
     __slots__ = (
         'query', 'Model', 'load_path',
         'customize_statements', 'customize_results',
+        '_customize_statements', '_customize_results',
         'select_op', 'filter_op', 'sort_op', 'skiplimit_op',
         'loader', 'related_executors',
     )
@@ -174,6 +175,8 @@ class QueryExecutor:
         # Copy customization handlers.
         # These functions should be prepared in such a way that it inspects the `load_path` argument
         # and thus handles any related model no matter how deep down the tree it is.
+        #
+        # NOTE: we COPY the whole list object. By reference. Any modifications will propagate.
         self.customize_statements = source_executor.customize_statements
         self.customize_results = source_executor.customize_results
 
@@ -195,9 +198,8 @@ class QueryExecutor:
         # Load all relations, using objects of the current level as "states"
         self._load_relations(connection, states)
 
-        # Customize results: execute every handler
-        for handler in self.customize_results:
-            states = handler(self, states)
+        # Apply operations & customizations
+        states = self._apply_operations_to_results(states)
 
         # Done
         return states
@@ -308,6 +310,21 @@ class QueryExecutor:
         # Done
         return stmt
 
+    def _apply_operations_to_results(self, rows: list[SARowDict]) -> list[SARowDict]:
+        """ Apply all operations to the result set """
+        # Apply operations
+        for handler in [self.select_op, self.filter_op, self.sort_op, self.skiplimit_op]:
+            rows = handler.apply_to_results(self, rows)
+
+        # Apply customization handlers
+        for handler in self.customize_results:
+            rows = handler(self, rows)
+
+        # Done
+        return rows
+
+
+
 
 # The type for load paths
 # Example:
@@ -321,3 +338,8 @@ CustomizeStatementCallable = abc.Callable[[QueryExecutor, sa.sql.Select], sa.sql
 
 # A callable that
 CustomizeResultsCallable = abc.Callable[[QueryExecutor, list[SARowDict]], list[SARowDict]]
+
+
+def reference_and_extend(source: list, extend: list) -> list:
+    source.extend(extend)
+    return source
