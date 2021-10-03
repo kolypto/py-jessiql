@@ -1,13 +1,13 @@
 """ Query Object tools for an SqlAlchemy model """
-import functools
+
+from functools import lru_cache
 
 import graphql
 
 import sqlalchemy as sa
-from pydantic.tools import lru_cache
+import sqlalchemy.orm
 
 from jessiql import sainfo
-
 from .defs import QueryFieldInfo, QUERY_FIELD_SKIP
 
 
@@ -70,7 +70,7 @@ class QueryModelField:
             return QUERY_FIELD_SKIP
 
 
-@lru_cache
+@lru_cache(maxsize=100)
 def get_mapper_for_path(mapper: sa.orm.Mapper, path: tuple[str]) -> sa.orm.Mapper:
     """ Follow `path` of attribute names, get down to the mapper through relationships
 
