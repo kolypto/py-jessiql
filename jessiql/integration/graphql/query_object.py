@@ -6,8 +6,8 @@ It goes through the Query tree, and:
 2. It walks the selected fields and adds them as Query Object 'select' or 'join'
 """
 
-
 from typing import Union, Any, Optional
+from collections import abc
 
 import graphql
 
@@ -18,20 +18,28 @@ from .selection import collect_fields
 from .query_field import QueryFieldFunc, QueryFieldInfo, query_every_field
 
 
-def query_object_for(info: graphql.GraphQLResolveInfo,
+def query_object_for(info: graphql.GraphQLResolveInfo, nested_path: abc.Iterable[str] = (), *,
                      runtime_type: Union[str, graphql.GraphQLObjectType] = None,
                      field_query: QueryFieldFunc = query_every_field,
                      ) -> QueryObject:
     """ Inspect the GraphQL query and make a Query Object Dict.
 
-    1. Traverses the GraphQL tree
-    2. Finds every field that has a JessiQL `query` argument.
+    1. Assuming that the current selected field has the JessiQL query argument (type "QueryObjectInput")
+    2. The actual object may be nested under `nested_path` (e.g. when Relay pagination is used).
+    3. It traverses the GraphQL tree
+    4. Finds every field that has a JessiQL `query` argument.
        It can have any name; it is identified by its type: "QueryObjectInput" (defined as a constant: QUERY_OBJECT_INPUT_NAME)
-    3. These fields are included as "join" relations.
+    5. These fields are included as "join" relations.
     4. Some other fields are included as "select" fields.
+
+    Example:
+        GraphQL: users(query: QueryObjectInput): [User!]
+        Call this function inside the resolver
 
     Args:
         info: The `info` object from your field resolver function
+        nested_path: Path to a sub-field where Query Object collection should start at.
+            Use when Query Object fields are nested within some wrapper object.
         runtime_type: The name for the model you're currently querying. Used to resolve fragments that depend on types.
             If you need to resolve multiple types, call this function multiple times to get different Query Objects.
         field_query: A function to decide how a particular field should be included into the Query Object.
@@ -42,15 +50,19 @@ def query_object_for(info: graphql.GraphQLResolveInfo,
     """
     assert len(info.field_nodes) == 1  # I've never seen a selection of > 1 field
     field_node = info.field_nodes[0]
+    parent_type = info.parent_type
+
+    # Get selected field definition
+    selected_field_def = graphql.utilities.type_info.get_field_def(info.schema, parent_type, field_node)
 
     # Get the Query Object dict
-    selected_field_def = graphql.utilities.type_info.get_field_def(info.schema, info.parent_type, field_node)
     query_object_dict = graphql_query_object_dict_from_query(
             info.schema,
             info.fragments,
             info.variable_values,
             selected_field_def=selected_field_def,  # type: ignore[arg-type]
             selected_field=field_node,
+            nested_path=nested_path,
             runtime_type=runtime_type,
             field_query=field_query,
         )
@@ -62,9 +74,10 @@ def query_object_for(info: graphql.GraphQLResolveInfo,
 def graphql_query_object_dict_from_query(
         schema: graphql.GraphQLSchema,
         fragments: dict[str, graphql.FragmentDefinitionNode],
-        variable_values: dict[str, Any],
+        variable_values: dict[str, Any], *,
         selected_field_def: graphql.GraphQLField,
-        selected_field: graphql.FieldNode, *,
+        selected_field: graphql.FieldNode,
+        nested_path: abc.Iterable[str] = (),
         runtime_type: Union[str, graphql.GraphQLObjectType] = None,
         field_query: QueryFieldFunc = query_every_field,
         _field_query_path: tuple[str, ...] = (),
@@ -92,8 +105,25 @@ def graphql_query_object_dict_from_query(
     """
     # Get the query argument name and the Query Object Input
     query_arg_name = get_query_argument_name_for(selected_field_def)
-    assert query_arg_name is not None  # Make sure this function is only called on fields that actually have a query
+    assert query_arg_name is not None, 'Current field has no JessiQL Query Object argument'
     query_arg = get_query_argument_value_for(selected_field, query_arg_name, variable_values) or {}
+
+    # unwrap lists & nonnulls, deal with raw types
+    selected_field_type: graphql.type.definition.GraphQLObjectType = unwrap_type(selected_field_def.type)  # type: ignore[assignment]
+
+    # Nested path?
+    # This section works in cases when `query` is on one level, but the actual object is on a lower level.
+    # For instance:
+    #   users(query: QueryObjectInput): UserConnection
+    #   UserConnection: { edges { node: User } }
+    # In this case, `selected_field` and `selected_field_def` point to `users`, but `nested_path` should descend
+    # down to `node` and take User fields from there.
+    try:
+        selected_field, selected_field_type = descend_into_field_with(nested_path, selected_field=selected_field, field_type=selected_field_type)
+    except KeyError:
+        # It fails when the user gives a bad field name.
+        # We will not fail. Let GraphQL fail for us.
+        pass
 
     # Prepare the Query Object Dict we're going to return
     query_object: QueryObjectDict = {
@@ -110,19 +140,24 @@ def graphql_query_object_dict_from_query(
         selected_field.selection_set,  # type: ignore[arg-type]
         runtime_type=runtime_type
     )
-    # unwrap lists & nonnulls, deal with raw types
-    selected_field_type: graphql.type.definition.GraphQLObjectType = unwrap_type(selected_field_def.type)  # type: ignore[assignment]
 
     # Iterate every field on this level, see if there's a place for them in the Query Object
     # Note that `field_name` may not be the original field name: it may be aliased by the query!
     for field_name, field_list in fields.items():
         for field in field_list:
+            # `field_name`: field name as given by the user, possibly aliased
+            # `field.name.value`: field name as defined in the schema
+
             # Schema field name
-            # Note that `field_name` may be the aliased name, whereas `field.name.value` is always the name as defined in the schema
             schema_field_name = field.name.value
 
             # Get field definition from the schema
-            field_def: graphql.type.definition.GraphQLField = selected_field_type.fields[field.name.value]
+            try:
+                field_def: graphql.type.definition.GraphQLField = selected_field_type.fields[schema_field_name]
+            except KeyError:
+                # It fails when the user gives a bad field name.
+                # We will not fail. Let GraphQL fail for us.
+                continue
 
             # How to include this field?
             info: QueryFieldInfo = field_query(schema_field_name, field_def, _field_query_path)
@@ -137,8 +172,8 @@ def graphql_query_object_dict_from_query(
                     schema,
                     fragments,
                     variable_values,
-                    field_def,
-                    field,
+                    selected_field_def=field_def,
+                    selected_field=field,
                     # TODO: runtime type currently cannot be resolved for sub-queries. This means that fragments cannot be used.
                     #   How to fix? callable() that feeds the type? @directives?
                     runtime_type=None,
@@ -171,6 +206,32 @@ def get_query_argument_value_for(field: graphql.FieldNode, query_arg_name: str, 
     # Nothing found
     else:
         return None
+
+
+def descend_into_field_with(path: abc.Iterable[str], *, selected_field: graphql.FieldNode, field_type: graphql.GraphQLObjectType):
+    """ Given a selected field (query) and its type (schema), follow `path` and descend into both
+
+    Args:
+        path: List of field names to descend into
+        selected_field: The field the user has selected in a query
+        field_def: The field type
+
+    Returns:
+        (selected_field, field_def)
+    """
+    for name in path:
+        # Descend into: selected fields
+        try:
+            selected_field = next(sel_node  # type: ignore[assignment]
+                                  for sel_node in selected_field.selection_set.selections  # type: ignore[union-attr]
+                                  if sel_node.name.value == name and selected_field.selection_set is not None)  # type: ignore[union-attr]
+        except StopIteration:
+            raise KeyError(selected_field)
+
+        # Descend into: schema
+        field_type = unwrap_type(field_type.fields[name].type)
+
+    return selected_field, field_type
 
 
 unwrap_type = graphql.get_named_type  # Unwrap GraphQL wrapper types (List, NonNull, etc)

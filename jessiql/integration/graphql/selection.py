@@ -225,6 +225,7 @@ def collect_fields(
 
     # Resolve `runtime_type`
     if isinstance(runtime_type, str):
+        assert runtime_type in schema.type_map, f'Type {runtime_type!r} not defined in GraphQL schema'
         runtime_type = schema.type_map[runtime_type]  # type: ignore[assignment]  # raises: KeyError
 
     # Create a fake execution context that is just capable enough to collect fields

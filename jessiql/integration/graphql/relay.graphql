@@ -1,0 +1,46 @@
+""" Base: paginated list results """
+interface Connection {
+#    """ Page items: list """
+#    edges: [Edge!]!
+
+    """ Pagination info """
+    pageInfo: PageInfo
+}
+
+""" Base: paginated item, one, with meta information """
+interface Edge {
+#    """ Page item """
+#    node: Node!
+
+    """ Cursor that points to the current object. Use to paginate forwards/backwards.
+    To paginate forwards: use (after=cursor, first: X)
+    To paginate backwards: use (before=cursor, last: X)
+    """
+    cursor: String
+
+    # Add more meta-information fields, if necessary
+}
+
+""" Relay pagination info """
+type PageInfo {
+    """ Cursor to the first item of the result set """
+    startCursor: String
+
+    """ Cursor to the last item of the result set """
+    endCursor: String
+
+    """ Is there any previous page?
+    If so, you can use (before: X, last: N) to go to the previous page
+    """
+    hasPreviousPage: Boolean!
+
+    """ Is there any next page?
+    If so, you can use (after: XXX, first: N) to go to the next page
+    """
+    hasNextPage: Boolean!
+}
+
+""" Base: types that have an identifier """
+interface Node {
+    id: ID!
+}

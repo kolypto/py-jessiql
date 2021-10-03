@@ -281,15 +281,60 @@ def test_query_object_with_sa_model(query_str: str, expected_query_object: dict)
         objects = sa.orm.relationship('Model', foreign_keys=object_ids)
 
     # Prepare the schema and the query document
-    schema = schema_prepare()
-    query = graphql.parse(query_str)
-
-    # Prepare ResolveInfo for the top-level object (query)
-    execution_context = graphql.ExecutionContext.build(schema=schema, document=query)
-    info = build_resolve_info_for(schema, query, execution_context)
+    qctx = prepare_graphql_query_for(schema_prepare(), query_str)
 
     # Get the Query Object
-    query_object = query_object_for(info, runtime_type='Model', field_query=QueryModelField(Model))
+    query_object = query_object_for(qctx.info, runtime_type='Model', field_query=QueryModelField(Model))
+    assert query_object.dict() == expected_query_object
+
+
+@pytest.mark.parametrize(('query_str', 'variables', 'expected_query_object'), [
+    # Test: Relay query
+    (
+        ''' 
+        query { 
+            users { edges { node { id login email } } pageInfo } 
+        }
+        ''',
+        {},
+        query(
+            select=['id', 'login', 'email'],
+        )
+    )
+])
+def test_query_object_relay_pagination(query_str: str, variables: dict, expected_query_object: dict):
+    """ Test how Query Object is generated for Relay pagination """
+    # Prepare our schema
+    from jessiql.integration.graphql.relay import graphql_jessiql_schema, graphql_relay_schema
+    from jessiql.integration.graphql.relay import relay_query_object_for
+    # language=graphql
+    schema = ("""
+        type Query {
+            users(first: Int, after: String, last: Int, before: String, query: QueryObjectInput): UserConnection
+        }
+        
+        type UserConnection implements Connection {
+           edges: [UserEdge!]!
+           pageInfo: PageInfo!
+        }
+        
+        type UserEdge implements Edge {
+            node: User!
+            cursor: String
+        }
+        
+        type User {
+            id: ID
+            login: String
+            email: String
+        }
+    """ + graphql_jessiql_schema + graphql_relay_schema)
+
+    # Prepare the schema and the query document
+    qctx = prepare_graphql_query_for(schema, query_str)
+
+    # Get the Query Object
+    query_object = relay_query_object_for(qctx.info, runtime_type='User')
     assert query_object.dict() == expected_query_object
 
 
