@@ -1,5 +1,6 @@
 import pytest
 import sqlalchemy as sa
+import sqlalchemy.orm
 
 import graphql
 from graphql import graphql_sync
@@ -8,6 +9,7 @@ from graphql import GraphQLResolveInfo
 from jessiql import QueryObjectDict
 from jessiql.integration.graphql import query_object_for
 from jessiql.integration.graphql.query_field.sa_model import QueryModelField
+from jessiql.testing.graphql import prepare_graphql_query_for, resolves
 from jessiql.util import sacompat
 
 from tests.util.models import IdManyFieldsMixin
@@ -188,20 +190,12 @@ def query(**fields):
 ])
 def test_query_object(query: str, variables: dict, expected_result_query: dict):
     """ Test how Query Object is generated """
-    # Models
-    Base = sacompat.declarative_base()
-
-    class Model(IdManyFieldsMixin, Base):
-        __tablename__ = 'models'
-
-        # Define some relationships
-        object_id = sa.Column(sa.ForeignKey('models.id'))
-        object_ids = sa.Column(sa.ForeignKey('models.id'))
-
-        object = sa.orm.relationship('Model', foreign_keys=object_id)
-        objects = sa.orm.relationship('Model', foreign_keys=object_ids)
+    # Prepare our schema
+    schema = graphql.build_schema(schema_prepare())
 
     # GraphQL resolver
+    @resolves(schema, 'Query', 'object')
+    @resolves(schema, 'Model', 'object')
     def resolve_object(obj, info: GraphQLResolveInfo, query: QueryObjectDict = None):
         query_object = query_object_for(info, runtime_type='Model')
         return {
@@ -209,6 +203,8 @@ def test_query_object(query: str, variables: dict, expected_result_query: dict):
             'query': query_object.dict(),
         }
 
+    @resolves(schema, 'Query', 'objects')
+    @resolves(schema, 'Model', 'objects')
     def resolve_objects(obj, info: GraphQLResolveInfo, query: QueryObjectDict = None):
         query_object = query_object_for(info, runtime_type='Model')
         return [
@@ -218,21 +214,11 @@ def test_query_object(query: str, variables: dict, expected_result_query: dict):
             },
         ]
 
-    # Prepare our schema
-    schema = schema_prepare()
-
-    # Bind resolvers
-    schema.type_map['Query'].fields['object'].resolve = resolve_object
-    schema.type_map['Model'].fields['object'].resolve = resolve_object
-    schema.type_map['Query'].fields['objects'].resolve = resolve_objects
-    schema.type_map['Model'].fields['objects'].resolve = resolve_objects
-
     # Execute
     res = graphql_sync(schema, query, variable_values=variables)
 
     if res.errors:
         raise res.errors[0]
-    __import__('pprint').pprint(res.data)
     assert res.data == expected_result_query
 
 
@@ -340,27 +326,10 @@ type Model {
 '''
 
 
-def schema_prepare() -> graphql.GraphQLSchema:
-    """ Build a GraphQL schema for testing JessiQL queries """
+def schema_prepare() -> str:
     from jessiql.integration.graphql.schema import graphql_jessiql_schema
-    return graphql.build_schema(
+    return (
         GQL_SCHEMA +
         # Also load QueryObject and QueryObjectInput
         graphql_jessiql_schema
-    )
-
-
-def build_resolve_info_for(schema: graphql.GraphQLSchema, query: graphql.DocumentNode, execution_context: graphql.ExecutionContext) -> graphql.GraphQLResolveInfo:
-    """ Given a simple query, prepare the ResolveInfo object for the top level """
-    # We only support one query in this test
-    assert len(query.definitions) == 1
-    query_type = schema.type_map['Query']
-    query_node = query.definitions[0]
-    query_selection = query_node.selection_set.selections
-
-    return execution_context.build_resolve_info(
-        field_def=graphql.utilities.type_info.get_field_def(schema, query_type, query_selection[0]),
-        field_nodes=query_selection,
-        parent_type=query_type,
-        path=graphql.pyutils.Path(None, 'query', None)
     )
