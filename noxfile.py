@@ -8,10 +8,10 @@ nox.options.sessions = [
 ]
 
 # Versions
-PYTHON_VERSIONS = ['3.9']
+PYTHON_VERSIONS = ['3.7', '3.8', '3.9', '3.10']
 SQLALCHEMY_VERSIONS = [
     *(f'1.3.{x}' for x in range(7, 1 + 24)),
-    *(f'1.4.{x}' for x in range(14, 1 + 23)),
+    *(f'1.4.{x}' for x in range(14, 1 + 25)),
 ]
 
 
