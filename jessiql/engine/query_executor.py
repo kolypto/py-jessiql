@@ -6,7 +6,7 @@ This is low level. See Query.
 from __future__ import annotations
 
 from collections import abc
-from typing import Union
+from typing import Union, Optional
 
 import sqlalchemy as sa
 
@@ -204,6 +204,35 @@ class QueryExecutor:
         # Done
         return states
 
+    def fetchone(self, connection: sa.engine.Connection) -> Optional[SARowDict]:
+        """ Execute all queries and fetch exactly one result row, if available """
+        # Get one row
+        try:
+            row = next(self._load_results(connection))
+        except StopIteration:
+            return None
+
+        # Load relations, apply operations & customizations
+        self._load_relations(connection, [row])
+        states = self._apply_operations_to_results([row])
+
+        # Done
+        return row
+
+    def count(self, connection: sa.engine.Connection) -> int:
+        """ Execute the query and return the number of result rows only """
+        # Prepare the statement
+        stmt = sa.select([sa.func.count()]).select_from(self.Model)
+
+        # Apply everything that may change the number of matching rows
+        stmt = self.filter_op.apply_to_statement(stmt)
+        for handler in self.customize_statements:
+            stmt = handler(self, stmt)
+
+        # Run
+        res: sa.engine.CursorResult = connection.execute(stmt)
+        return res.scalar()  # type: ignore[return-value]
+
     # Overridable classes: loaders
     # Replace to customize the way data is loaded
     PrimaryQueryLoader = PrimaryQueryLoader
@@ -247,13 +276,13 @@ class QueryExecutor:
     def query_level(self) -> int:
         """ Get the "level" of this query
 
-        Level 1: the root query
-        Level 2: query that loads related objects
-        Level 3: query that loads related objects of the next level
+        Level 0: the root query
+        Level 1: query that loads related objects
+        Level 2: query that loads related objects of the next level
         """
         # First level: (Model,)
         # Second level: (Model, relation name, relationship property)
-        return 1 + (len(self.load_path) - 1) // 2
+        return (len(self.load_path) - 1) // 2
 
     def statement(self) -> sa.sql.Select:
         """ Build an SQL SELECT statement for the current Model.
@@ -289,7 +318,7 @@ class QueryExecutor:
             yield from executor.all_statements()
 
     def _apply_operations_to_statement(self, stmt: sa.sql.Select) -> sa.sql.Select:
-        """ Apply all operations to the statement """
+        """ Apply operations & handlers to the statement """
         # The loader may want to modify the statement: add some columns, for instance
         stmt = self.loader.prepare_statement(stmt)
 
@@ -311,7 +340,7 @@ class QueryExecutor:
         return stmt
 
     def _apply_operations_to_results(self, rows: list[SARowDict]) -> list[SARowDict]:
-        """ Apply all operations to the result set """
+        """ Apply operations & handlers to the result set """
         # Apply operations
         for op in [self.select_op, self.filter_op, self.sort_op, self.skiplimit_op]:
             rows = op.apply_to_results(self, rows)
@@ -322,8 +351,6 @@ class QueryExecutor:
 
         # Done
         return rows
-
-
 
 
 # The type for load paths

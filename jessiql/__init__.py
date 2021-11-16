@@ -19,11 +19,12 @@ from .sainfo.properties import loads_attributes, loads_attributes_readcode
 #   This includes: sort, filter
 # TODO: filter by related objects
 #   > { filter: { "user.articles.id": 10 } }
-# TODO: async loading! Easy, but JSelectInLoader will be difficult
 # TODO: aggregation
 #   > min, max, sum, avg + filter
 
 # TODO: use baked queries in JSelectInLoader to speed things up
+
+# TODO: async loading! Easy, but JSelectInLoader will be difficult
 
 # TODO: a tool to apply JessiQL Query Object to plain lists & dicts (to fake behavior for non-JessiQL APIs).
 #   To achieve that, implement a Query-like engine object that processes Python objects

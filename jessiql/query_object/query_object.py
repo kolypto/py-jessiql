@@ -3,8 +3,9 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-
 from typing import Optional, Union, TypedDict
+
+from jessiql import exc
 from jessiql.typing import SAModelOrAlias
 
 
@@ -64,6 +65,18 @@ class QueryObject:
                 limit=query_object.get('limit'),
             ),
         )
+
+    @classmethod
+    def ensure_query_object(cls, input: Optional[Union[QueryObject, QueryObjectDict]]) -> QueryObject:
+        """ Construct a Query Object from any valid input """
+        if input is None:
+            return cls.from_query_object({})  # type:ignore[typeddict-item]
+        elif isinstance(input, QueryObject):
+            return input
+        elif isinstance(input, dict):
+            return QueryObject.from_query_object(input)
+        else:
+            raise exc.QueryObjectError(f'QueryObject must be an object, "{type(input).__name__}" given')
 
     def resolve(self, Model: Union[type, SAModelOrAlias]):
         """ Resolve this query object: resolve references to actual columns of the given model

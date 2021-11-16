@@ -27,8 +27,7 @@ class Query(QueryExecutor):
             exc.QueryObjectError: Query object syntax error (wrong operator name, argument type)
         """
         # Parse the Query Object
-        if not isinstance(query, QueryObject):
-            query = QueryObject.from_query_object(query)
+        query = QueryObject.ensure_query_object(query)
 
         # Proceed
         super().__init__(query, Model)  # type: ignore[arg-type]

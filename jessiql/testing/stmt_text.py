@@ -3,9 +3,19 @@ import re
 import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql
 
+import jessiql.engine
+
 
 # The dialect to use for compiling statements
 DEFAULT_DIALECT: sa.engine.interfaces.Dialect = postgresql.dialect()  # type: ignore[misc]
+
+
+def query2sql(query: jessiql.engine.QueryExecutor, dialect: sa.engine.interfaces.Dialect = None):
+    """ Convert a JesiQL Query into a SQL string (for inspection) """
+    return '\n\n\n'.join(
+        stmt2sql(stmt, dialect)
+        for stmt in query.all_statements()
+    )
 
 
 def stmt2sql(stmt: sa.sql.ClauseElement, dialect: sa.engine.interfaces.Dialect = None) -> str:

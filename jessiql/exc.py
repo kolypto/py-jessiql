@@ -34,7 +34,6 @@ class InvalidRelationError(InvalidColumnError):
     """
 
 
-
 class RuntimeQueryError(BaseJessiqlException):
     """ Uncaught error while processing a query
 
