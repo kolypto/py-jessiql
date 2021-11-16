@@ -160,15 +160,17 @@ class KeysetCursor(CursorImplementation[KeysetPageInfo, KeysetCursorData]):
                 )),
                 cursor.val
             )
+            query_offset = None
         else:
             filter_expression = True
+            query_offset = skip
 
         # Paginate
         # We will always load one more row to check if there's a next page
         if SA_14:
-            return stmt.filter(filter_expression).limit(limit + 1)
+            return stmt.filter(filter_expression).offset(query_offset).limit(limit + 1)
         else:
-            return stmt.where(filter_expression).limit(limit + 1)
+            return stmt.where(filter_expression).offset(query_offset).limit(limit + 1)
 
     @classmethod
     def inspect_data_rows(cls, cursor_value: Optional[KeysetCursorData], query_executor: Query, rows: list[SARowDict]) -> KeysetPageInfo:

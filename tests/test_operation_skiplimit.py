@@ -228,6 +228,22 @@ def test_skiplimit_cursor_pagination(connection: sa.engine.Connection):
                                                 None)
 
 
+        # ### Test: fall back to skip:N
+
+        # Page 0
+        q, res = load(select=['id', 'a'], sort=['a', 'id'], limit=2, skip=0)
+        assert ids(res) == [1, 2]
+
+        # Page 1
+        q, res = load(select=['id', 'a'], sort=['a', 'id'], limit=2, skip=2)
+        assert ids(res) == [3, 4]
+
+        # Page 2
+        q, res = load(select=['id', 'a'], sort=['a', 'id'], limit=2, skip=4)
+        assert ids(res) == [5]
+
+
+
     # Models
     Base = sacompat.declarative_base()
 

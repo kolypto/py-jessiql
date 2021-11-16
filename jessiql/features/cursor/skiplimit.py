@@ -24,11 +24,11 @@ class CursorLimitOperation(SkipLimitOperation):
 
     Then, optionally, you can get a cursor from this object:
 
-        skip:eyJza2lwIjogMiwgImxpbWl0IjogMn0=
+        skip:dm?jdX>cMsATlf<B5Y}GX>=kwAToU
 
     And now you get to the next page using it:
 
-        { skip: 'skip:eyJza2lwIjogMiwgImxpbWl0IjogMn0=' }
+        { skip: 'skip:dm?jdX>cMsATlf<B5Y}GX>=kwAToU' }
 
     When possible, it applies KEYSET pagination, which is the fastest way to paginate!
     If your "sort" ends with a unique key, and sort fields are also available in "select":
