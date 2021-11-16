@@ -1,6 +1,6 @@
 import fastapi
 import json
-from typing import Optional, Any
+from typing import Optional, Any, Union
 
 from jessiql import exc
 from jessiql.query_object.query_object import QueryObject, QueryObjectDict
@@ -33,9 +33,9 @@ def query_object(*,
             title='Sorting order',
             description='List of columns with `+` or `-`. Example: `[ "login", "ctime-" ]`. JSON or YAML.',
         ),
-        skip: Optional[int] = fastapi.Query(
+        skip: Optional[Union[int, str]] = fastapi.Query(
             None,
-            title='Pagination. The number of items to skip.'
+            title='Pagination. The number of items to skip. Or the pagination cursor.'
         ),
         limit: Optional[int] = fastapi.Query(
             None,
