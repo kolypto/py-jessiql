@@ -221,7 +221,11 @@ def collect_fields(
     """
     assert isinstance(fragments, dict)
     assert isinstance(variable_values, dict)
-    assert isinstance(selection_set, graphql.SelectionSetNode)
+    assert isinstance(selection_set, graphql.SelectionSetNode) or selection_set is None
+
+    # Edge case: none selected? None returned.
+    if selection_set is None or not selection_set.selections:
+        return {}
 
     # Resolve `runtime_type`
     if isinstance(runtime_type, str):

@@ -37,7 +37,8 @@ def get_query_argument_name_for(field_def: graphql.GraphQLField) -> Optional[str
         argument name (str), or None if not found.
     """
     for arg_name, arg in field_def.args.items():
-        if arg.type.name == QUERY_OBJECT_INPUT_NAME:  # type: ignore[union-attr]
+        field_type = unwrap_type(arg.type)
+        if field_type.name == QUERY_OBJECT_INPUT_NAME:  # type: ignore[union-attr]
             return arg_name
     else:
         return None
@@ -47,3 +48,5 @@ def has_query_argument(field_def: graphql.GraphQLField) -> bool:
     """ Test whether the field has a `query` argument (found by its type) """
     return get_query_argument_name_for(field_def) is not None
 
+
+unwrap_type = graphql.get_named_type  # Unwrap GraphQL wrapper types (List, NonNull, etc)

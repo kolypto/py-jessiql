@@ -187,6 +187,17 @@ def query(**fields):
                 }
             }
         ),
+    # Test: does not fail when a non-null parameter is present
+    # get_query_argument_name_for() used to fail because it didn't un-wrap wrapper types like NonNull
+    (
+        ''' 
+        query($id: Int!, $query: QueryObjectInput) { 
+            getObject(id: $id, query: $query)
+        }
+        ''',
+        {'id': 1, 'query': dict(sort=['id-'])},
+        {'getObject': None},
+    ),
 ])
 def test_query_object(query: str, variables: dict, expected_result_query: dict):
     """ Test how Query Object is generated """
@@ -213,6 +224,11 @@ def test_query_object(query: str, variables: dict, expected_result_query: dict):
                 'query': query_object.dict(),
             },
         ]
+
+    @resolves(schema, 'Query', 'getObject')
+    def resolve_object(obj, info: GraphQLResolveInfo, id: int, query: QueryObjectDict = None) -> int:
+        # just fail in case of bugs when getting the QueryObject
+        query_object = query_object_for(info, runtime_type='Model')
 
     # Execute
     res = graphql_sync(schema, query, variable_values=variables)
@@ -343,6 +359,9 @@ GQL_SCHEMA = '''
 type Query {
     object (query: QueryObjectInput): Model
     objects (query: QueryObjectInput): [Model]
+    
+    # Test a special use case where code failed on wrapped (NonNull) objects
+    getObject(id: Int!, query: QueryObjectInput): Int
 }
 
 type Model {
