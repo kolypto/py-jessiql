@@ -170,4 +170,3 @@ def code_uses_attributes(code, object_name: str = 'self') -> abc.Iterator[str]:
             ):
             yield instruction.argval
         prev_instruction = instruction
-

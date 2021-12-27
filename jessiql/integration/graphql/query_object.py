@@ -240,9 +240,11 @@ def descend_into_field_with(path: abc.Iterable[str], *, selected_field: graphql.
 
         # Descend into: selected fields
         try:
-            selected_field = next(sel_node  # type: ignore[assignment]
-                                  for sel_node in selected_field.selection_set.selections  # type: ignore[union-attr]
-                                  if sel_node.name.value == name and selected_field.selection_set is not None)  # type: ignore[union-attr]
+            selected_field = next(sel_node
+                                  for sel_node in selected_field.selection_set.selections
+                                  if (isinstance(sel_node, graphql.FieldNode) and
+                                      sel_node.name.value == name and
+                                      selected_field.selection_set is not None))
         except StopIteration:
             raise KeyError(selected_field)
 
