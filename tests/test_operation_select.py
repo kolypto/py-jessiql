@@ -3,7 +3,7 @@ import sqlalchemy as sa
 import sqlalchemy.ext.hybrid
 
 from jessiql import QueryObjectDict
-from jessiql.sainfo.properties import is_annotated_with_loads
+from jessiql.sainfo.properties import is_annotated_with_loads, get_property_loads_attribute_names
 from jessiql.sainfo.version import SA_14
 from jessiql.testing.insert import insert
 from jessiql.testing.recreate_tables import created_tables
@@ -35,11 +35,12 @@ def test_select_sql(connection: sa.engine.Connection, query_object: QueryObjectD
         @property
         @loads_attributes_readcode()
         def abc(self):
-            raise NotImplementedError  # we don't care in this test
             self.a, self.b, self.c  # readcode will get this
+            raise NotImplementedError  # we don't care in this test
 
     # Make sure it's detected properly
-    assert is_annotated_with_loads(Model.abc)
+    assert is_annotated_with_loads(Model.abc)  # decorated ok
+    assert get_property_loads_attribute_names(Model.abc) == ('a', 'b', 'c')  # code is read ok
 
     # Test
     typical_test_sql_selected_columns(query_object, Model, expected_columns)
