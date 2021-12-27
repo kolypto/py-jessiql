@@ -1,9 +1,25 @@
 """ Making queries with GraphQL """
 from __future__ import annotations
 
-from typing import NamedTuple
+from typing import NamedTuple, Any
 
 import graphql
+
+
+def graphql_query_sync(schema: graphql.GraphQLSchema, query: str, context_value: Any = None, **variable_values):
+    """ Make a GraphqQL query, quick. Fail on errors. """
+    res = graphql.graphql_sync(schema, query, variable_values=variable_values, context_value=context_value)
+
+    # Raise errors as exceptions. Useful in unit-tests.
+    if res.errors:
+        # On error? raise it as it is
+        if len(res.errors) == 1:
+            raise res.errors[0]
+        # Many errors? Raise as a list
+        else:
+            raise RuntimeError(res.errors)
+
+    return res.data
 
 
 def prepare_graphql_query_for(schema_str: str, query_str: str) -> QueryContext:
