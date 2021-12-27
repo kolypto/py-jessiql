@@ -21,6 +21,8 @@ from .query_field import QueryFieldFunc, QueryFieldInfo, query_every_field
 def query_object_for(info: graphql.GraphQLResolveInfo, nested_path: abc.Iterable[str] = (), *,
                      runtime_type: Union[str, graphql.GraphQLObjectType] = None,
                      field_query: QueryFieldFunc = query_every_field,
+                     query_argument: Optional[str] = None,
+                     has_query_argument: bool = True,
                      ) -> QueryObject:
     """ Inspect the GraphQL query and make a Query Object Dict.
 
@@ -43,6 +45,8 @@ def query_object_for(info: graphql.GraphQLResolveInfo, nested_path: abc.Iterable
         runtime_type: The name for the model you're currently querying. Used to resolve fragments that depend on types.
             If you need to resolve multiple types, call this function multiple times to get different Query Objects.
         field_query: A function to decide how a particular field should be included into the Query Object.
+        query_argument: The name of the Query Object argument. Default: auto-detect by type: QueryObjectInput
+        has_query_argument: Shall we attempt to get the value of the query argument?
 
     Example:
         def resolve_user(obj, info):
@@ -65,6 +69,8 @@ def query_object_for(info: graphql.GraphQLResolveInfo, nested_path: abc.Iterable
             nested_path=nested_path,
             runtime_type=runtime_type,
             field_query=field_query,
+            query_argument=query_argument,
+            has_query_argument=has_query_argument,
         )
 
     # Convert into a QueryObject
@@ -80,6 +86,8 @@ def graphql_query_object_dict_from_query(
         nested_path: abc.Iterable[str] = (),
         runtime_type: Union[str, graphql.GraphQLObjectType] = None,
         field_query: QueryFieldFunc = query_every_field,
+        query_argument: Optional[str] = None,
+        has_query_argument: bool = True,
         _field_query_path: tuple[str, ...] = (),
 ) -> QueryObjectDict:
     """ Inspect the GraphQL query and make a Query Object Dict.
@@ -95,6 +103,8 @@ def graphql_query_object_dict_from_query(
          runtime_type: The name for the model you're currently querying. Used to resolve fragments that depend on types.
             If you need to resolve multiple types, call this function multiple times to get different Query Objects.
         field_query: A function to decide how a particular field should be included into the Query Object
+        query_argument: The name of the Query Object argument. Default: auto-detect by type: QueryObjectInput
+        has_query_argument: Shall we attempt to get the value of the query argument?
 
     Returns:
         Query Object Dict.
@@ -104,9 +114,13 @@ def graphql_query_object_dict_from_query(
         RuntimeError: fragment was used, but `runtime_type` was not provided
     """
     # Get the query argument name and the Query Object Input
-    query_arg_name = get_query_argument_name_for(selected_field_def)
-    assert query_arg_name is not None, 'Current field has no JessiQL Query Object argument'
-    query_arg = get_query_argument_value_for(selected_field, query_arg_name, variable_values) or {}
+    if has_query_argument:
+        query_arg_name = query_argument or get_query_argument_name_for(selected_field_def)
+        assert query_arg_name is not None, 'Current field has no JessiQL Query Object argument'
+        query_arg = get_query_argument_value_for(selected_field, query_arg_name, variable_values) or {}
+    # Sometimes there might be no QueryObject input at all: e.g. mutation methods. Filter & sort make no sense with them.
+    else:
+        query_arg = {}
 
     # unwrap lists & nonnulls, deal with raw types
     selected_field_type: graphql.type.definition.GraphQLObjectType = unwrap_type(selected_field_def.type)  # type: ignore[assignment]
@@ -220,6 +234,10 @@ def descend_into_field_with(path: abc.Iterable[str], *, selected_field: graphql.
         (selected_field, field_def)
     """
     for name in path:
+        if not selected_field.selection_set:
+            # CHECKME: perhaps, don't fail?
+            raise ValueError(f"Field {selected_field.name.value!r} has no selections. Nesting cannot descent. Is your `nested_path` correct?")
+
         # Descend into: selected fields
         try:
             selected_field = next(sel_node  # type: ignore[assignment]
