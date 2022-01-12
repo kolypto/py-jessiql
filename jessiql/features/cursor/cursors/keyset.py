@@ -89,8 +89,11 @@ class KeysetCursor(CursorImplementation[KeysetPageInfo, KeysetCursorData]):
         * The final sort field is a non-nullable unique key
         * Sort fields are available with "select"
         """
+        debug = False  # change to inspect exactly why keyset pagination is not possible
+
         # The query is sorted
         if not query.sort.fields:
+            debug and print(f'Keyset n/a: {query.sort.fields=} is empty')
             return False
 
         # All fields have the same sorting direction: all asc, or all desc
@@ -98,15 +101,18 @@ class KeysetCursor(CursorImplementation[KeysetPageInfo, KeysetCursorData]):
         #  In this case, however, that nice tuple() expression would have to be replaced with something more complicated.
         #  We can do it!
         if len({field.direction for field in query.sort.fields}) != 1:
+            debug and print(f'Keyset n/a: {query.sort.export()=} has varied directions')
             return False
 
         # The final sort field is a non-nullable unique key
         final_field = query.sort.fields[-1]
         if not is_column_property_unique(final_field.property) or is_column_property_nullable(final_field.property):
+            debug and print(f'Keyset n/a: final sort field {final_field.name=} is not UNIQUE NOT NULL')
             return False
 
         # Every sort field is included in "select"
         if not (query.sort.names <= query.select.names):
+            debug and print(f'Keyset n/a: some sort fields are not in select: {list(query.sort.names - query.select.names)}')
             return False
 
         # Yes we can!!

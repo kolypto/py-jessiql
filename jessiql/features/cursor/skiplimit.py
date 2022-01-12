@@ -68,6 +68,9 @@ class CursorLimitOperation(SkipLimitOperation):
 
     def get_page_links(self) -> PageLinks:
         """ Generate cursors to navigate to the next and previous pages """
+        # NOTE: it will return "skip:" cursors in case keyset pagination is not possible.
+        # If you want to learn exactly why, see KeysetCursor.pagination_possible()
+
         skip, limit = self._get_skip_limit()
 
         # No per-page limit set? No pagination possible. Quit.
