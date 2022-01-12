@@ -5,7 +5,7 @@ import sqlalchemy.ext.hybrid
 from jessiql import QueryObjectDict
 from jessiql.sainfo.properties import is_annotated_with_loads, get_property_loads_attribute_names
 from jessiql.sainfo.version import SA_14
-from jessiql.testing.insert import insert
+from jessiql.testing.table_data import insert
 from jessiql.testing.recreate_tables import created_tables
 from jessiql.util import sacompat
 from jessiql import loads_attributes_readcode

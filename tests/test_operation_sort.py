@@ -2,7 +2,7 @@ import pytest
 import sqlalchemy as sa
 
 from jessiql import QueryObjectDict
-from jessiql.testing.insert import insert
+from jessiql.testing.table_data import insert
 from jessiql.testing.recreate_tables import created_tables
 from jessiql.util import sacompat
 
@@ -107,4 +107,3 @@ def test_joined_sort(connection: sa.engine.Connection, query_object: QueryObject
 
         # Test
         typical_test_query_text_and_results(connection, query_object, User, expected_query_lines, expected_results)
-

@@ -6,7 +6,7 @@ import jessiql
 from jessiql import QueryObjectDict
 from jessiql.features.cursor.cursors.encode import decode_opaque_cursor
 from jessiql.sainfo.version import SA_14
-from jessiql.testing.insert import insert
+from jessiql.testing.table_data import insert
 from jessiql.testing.recreate_tables import created_tables
 from jessiql.util import sacompat
 

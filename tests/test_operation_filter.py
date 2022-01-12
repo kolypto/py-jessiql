@@ -4,7 +4,7 @@ from sqlalchemy.dialects import postgresql as pg
 
 from jessiql import QueryObjectDict
 from jessiql.sainfo.version import SA_14
-from jessiql.testing.insert import insert
+from jessiql.testing.table_data import insert
 from jessiql.testing.recreate_tables import created_tables
 from jessiql.util import sacompat
 

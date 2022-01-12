@@ -1,3 +1,4 @@
+from itertools import chain
 from typing import Union
 
 import sqlalchemy as sa
@@ -15,6 +16,9 @@ def insert(connection: sa.engine.Connection, Model: Union[sa.sql.Selectable, typ
                dict(id=3),
         )
     """
+    all_keys = set(chain.from_iterable(d.keys() for d in values))
+    assert values[0].keys() == set(all_keys), 'The first dict() must contain all possible keys'
+
     stmt = sa.insert(Model).values(values)
     connection.execute(stmt)
 
