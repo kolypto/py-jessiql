@@ -5,6 +5,7 @@ They do not interact with SqlAlchemy in any way.
 """
 
 from .query_object import QueryObject, QueryObjectDict
+from .encode import query_object_param
 
 from .base import OperationInputBase
 from .select import SelectQuery, SelectedField, SelectedRelation
