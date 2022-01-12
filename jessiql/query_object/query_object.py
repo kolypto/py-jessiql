@@ -9,7 +9,7 @@ from jessiql import exc
 from jessiql.typing import SAModelOrAlias
 
 
-class QueryObjectDict(TypedDict):
+class QueryObjectDict(TypedDict, total=False):
     """ Dict representation of a query object """
     select: Optional[list[Union[str, dict]]]
     join: Optional[dict]
