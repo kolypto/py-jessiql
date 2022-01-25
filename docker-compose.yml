@@ -5,7 +5,7 @@ services:
     image: postgres:latest
     restart: always
     ports:
-      - '127.0.0.1:5432:5432'
+      - '127.0.0.1:54320:5432'
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
@@ -15,7 +15,7 @@ services:
     image: mysql:latest
     restart: always
     ports:
-      - '127.0.0.1:3306:3306'
+      - '127.0.0.1:33060:3306'
     environment:
       MYSQL_USER: mysql
       MYSQL_PASSWORD: mysql

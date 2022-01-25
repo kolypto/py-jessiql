@@ -12,6 +12,8 @@ from .sainfo.properties import loads_attributes, loads_attributes_readcode
 
 
 # TODO: README.md
+# TODO: relationship configuration: limited queries & depth
+# TODO: legacy & custom fields: query object to support fields that should be ignored
 
 # TODO: pluck JSON & JSONB attribute with dot-notation in 'select'?
 #   > { select: ["meta.id"] }
