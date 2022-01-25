@@ -94,9 +94,9 @@ def test_select_results(connection: sa.engine.Connection, query_object: QueryObj
     # Data
     with created_tables(connection, Base):
         # Insert some rows
-        insert(connection, Model, [
+        insert(connection, Model,
             id_manyfields('m', 1),
-        ])
+        )
 
         # Test
         typical_test_query_results(connection, query_object, Model, expected_results)
@@ -303,12 +303,12 @@ def test_joined_select(connection: sa.engine.Connection, model: str, query_objec
     # Data
     with created_tables(connection, Base):
         # Insert some rows
-        insert(connection, User, [
+        insert(connection, User,
             id_manyfields('u', 1),
             id_manyfields('u', 2),
             id_manyfields('u', 3),
-        ])
-        insert(connection, Article, [
+        )
+        insert(connection, Article,
             # 2 articles from User(id=1)
             id_manyfields('a', 1, user_id=1),
             id_manyfields('a', 2, user_id=1),
@@ -319,8 +319,8 @@ def test_joined_select(connection: sa.engine.Connection, model: str, query_objec
             # article with no user
             # this is a potential stumbling block for conditions that fail to filter it out
             id_manyfields('a', 5, user_id=None),
-        ])
-        insert(connection, Comment, [
+        )
+        insert(connection, Comment,
             # User(id=1), User(id=2), User(id=3) commented on Article(id=1)
             id_manyfields('c', 1, user_id=1, article_id=1),
             id_manyfields('c', 2, user_id=2, article_id=1),
@@ -332,7 +332,7 @@ def test_joined_select(connection: sa.engine.Connection, model: str, query_objec
             # comment with no user/article
             # this is a potential stumbling block for conditions that fail to filter it out
             id_manyfields('c', 6, user_id=None, article_id=None),
-        ])
+        )
 
         # Test
         Model = {

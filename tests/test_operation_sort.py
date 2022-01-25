@@ -52,11 +52,11 @@ def test_sort_results(connection: sa.engine.Connection, query_object: QueryObjec
     # Data
     with created_tables(connection, Base):
         # Insert some rows
-        insert(connection, Model, [
+        insert(connection, Model,
             id_manyfields('m', 1),
             id_manyfields('m', 2),
             id_manyfields('m', 3),
-        ])
+        )
 
         # Test
         typical_test_query_results(connection, query_object, Model, expected_results)
@@ -96,14 +96,14 @@ def test_joined_sort(connection: sa.engine.Connection, query_object: QueryObject
     # Data
     with created_tables(connection, Base):
         # Insert some rows
-        insert(connection, User, [
+        insert(connection, User,
             id_manyfields('u', 1),
-        ])
-        insert(connection, Article, [
+        )
+        insert(connection, Article,
             id_manyfields('a', 1, user_id=1),
             id_manyfields('a', 2, user_id=1),
             id_manyfields('a', 3, user_id=1),
-        ])
+        )
 
         # Test
         typical_test_query_text_and_results(connection, query_object, User, expected_query_lines, expected_results)
