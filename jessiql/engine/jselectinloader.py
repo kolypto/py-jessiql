@@ -7,13 +7,17 @@ from typing import Union
 import sqlalchemy as sa
 import sqlalchemy.orm.strategies
 
-from jessiql.sainfo.version import SA_13, SA_14
 from jessiql.sautil.adapt import SimpleColumnsAdapter
 from jessiql.typing import SAModelOrAlias, SARowDict
+from jessiql.util.sacompat import add_columns
+from jessiql.sainfo.version import SA_13, SA_14
 
 
 # TODO: Based on SqlAlchemy v1.4.23. Update SqlAlchemy, see if any changes can/should be backported.
 #   This is a rolling to do. We need to keep updating.
+# Find diffs:
+# https://github.com/sqlalchemy/sqlalchemy/compare/rel_1_4_23...rel_1_4_24
+# $ git diff rel_1_4_23..rel_1_4_24 -- lib/sqlalchemy/orm/strategies.py
 
 
 # Inspired by SelectInLoader._load_for_path()
@@ -24,6 +28,8 @@ from jessiql.typing import SAModelOrAlias, SARowDict
 # * Some customizations are marked with [CUSTOMIZED]
 # * Some additions are marked with [ADDED]
 # * Anchor lines in the original SqlAlchemy code marked [o] with original code samples provided
+
+
 class JSelectInLoader:
     """ Loader for related objects, borrowing the approach from SqlAlchemy's SelectInLoader
 
@@ -150,11 +156,7 @@ class JSelectInLoader:
         # [o] bundle_sql = bundle_ent.__clause_element__()
         # [o] q = Select._create_raw_select(
         # [o] _raw_columns=[bundle_sql, entity_sql],
-        if SA_13:
-            for col in pk_cols:
-                q.append_column(col)
-        else:
-            q = q.add_columns(*pk_cols)  # [CUSTOMIZED]
+        q = add_columns(q, pk_cols)  # [CUSTOMIZED]
 
         # [o] q = q.filter(in_expr.in_(sql.bindparam("primary_keys")))
         if SA_13:

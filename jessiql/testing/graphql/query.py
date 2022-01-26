@@ -66,9 +66,21 @@ def build_resolve_info_for(schema: graphql.GraphQLSchema, query: graphql.Documen
     query_node: graphql.ExecutableDefinitionNode = query.definitions[0]  # type: ignore[assignment]
     query_selection = query_node.selection_set.selections
 
+    print(graphql.version_info, graphql.version_info <= (3, 1, 2))
+
     return execution_context.build_resolve_info(
         field_def=graphql.utilities.type_info.get_field_def(schema, query_type, query_selection[0]), # type: ignore[arg-type]
         field_nodes=query_selection, # type: ignore[arg-type]
         parent_type=query_type, # type: ignore[arg-type]
-        path=graphql.pyutils.Path(None, 'query', None)
+        path=compat_Path(None, 'query', None),
     )
+
+
+def compat_Path(prev, key, typename):
+    """ Compatibility for Path() """
+    # Old versions: two arguments
+    if graphql.version_info < (3, 1, 3):
+        return graphql.pyutils.Path(prev, key)
+    # New versions: three arguments
+    else:
+        return graphql.pyutils.Path(prev, key, typename)

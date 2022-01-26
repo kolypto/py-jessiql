@@ -11,6 +11,7 @@ from jessiql.sainfo.version import SA_14
 
 from .base import Operation
 from .sort import get_sort_fields_with_direction
+from ..util.sacompat import add_columns
 
 
 class SkipLimitOperation(Operation):
@@ -117,11 +118,7 @@ class SkipLimitOperation(Operation):
             # give it a name that we can use later
             .label('__group_row_n')
         )
-
-        if SA_14:
-            stmt = stmt.add_columns(row_counter_col)
-        else:
-            stmt.append_column(row_counter_col)
+        stmt = add_columns(stmt, [row_counter_col])
 
         # Wrap ourselves into a subquery.
         # This is necessary because Postgres does not let you reference SELECT aliases in the WHERE clause.

@@ -14,6 +14,7 @@ from jessiql.sainfo.version import SA_13
 
 from .base import Operation
 from ..sautil.properties import evaluate_property_on_dict
+from ..util.sacompat import add_columns_if_missing
 
 if TYPE_CHECKING:
     from jessiql.engine.query_executor import QueryExecutor
@@ -42,24 +43,14 @@ class SelectOperation(Operation):
         # Add columns to Select
         # This includes our columns and foreign keys for related objects as well!
         selected_columns = list(self.compile_columns())
-
-        if SA_13:
-            for col in selected_columns:
-                stmt.append_column(col)
-        else:
-            stmt = stmt.add_columns(*selected_columns)
+        stmt = add_columns_if_missing(stmt, selected_columns)
 
         # If no columns were selected, use the primary key
         # This is because SQL does not tolerate empty queries.
         # We could have used constant `1`, but where's fun in that :)
-        if len(selected_columns) == 0:
-            if SA_13:
-                for col in sa.orm.class_mapper(self.target_Model).primary_key:
-                    stmt.append_column(col)
-            else:
-                stmt = stmt.add_columns(
-                    *sa.orm.class_mapper(self.target_Model).primary_key
-                )
+        if not selected_columns:
+            primary_key = sa.orm.class_mapper(self.target_Model).primary_key
+            stmt = add_columns_if_missing(stmt, primary_key)
 
         # Done
         return stmt

@@ -241,5 +241,3 @@ def graphql_execution_context_for_query(source: str) -> graphql.ExecutionContext
 
     # Done
     return context
-
-

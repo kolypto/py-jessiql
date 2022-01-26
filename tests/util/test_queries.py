@@ -73,6 +73,10 @@ def assert_statement_lines(stmt: Union[str, sa.sql.ClauseElement], *expected_lin
     if isinstance(stmt, sa.sql.ClauseElement):
         stmt = stmt2sql(stmt, dialect)
 
+    # Compatibility: Since 1.4.27, "[POSTCOMPILE_%s]" is rendered as "__[POSTCOMPILE_%s]" because of MSSQL compatibility issues =\
+    # Here, we change it back so that our tests do not have to think about it
+    stmt = stmt.replace('__[POSTCOMPILE_', '[POSTCOMPILE_')
+
     # Test
     for line in expected_lines:
         assert line.strip() in stmt, f'{line!r} not found in {stmt!r}'
@@ -93,4 +97,3 @@ def assert_selected_columns(stmt: Union[str, sa.sql.ClauseElement], *expected_co
 
     # Done
     return stmt
-

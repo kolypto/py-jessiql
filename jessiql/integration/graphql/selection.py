@@ -232,29 +232,8 @@ def collect_fields(
         assert runtime_type in schema.type_map, f'Type {runtime_type!r} not defined in GraphQL schema'
         runtime_type = schema.type_map[runtime_type]  # type: ignore[assignment]  # raises: KeyError
 
-    # Create a fake execution context that is just capable enough to collect fields
-    # It's like a lightweight ExecutionContext that reuses its capabilities
-    execution_context = GraphqlFieldCollector(
-        schema=schema,
-        fragments=fragments,
-        variable_values=variable_values,
-    )
-
-    # Resolve all fields
-    visited_fragment_names: set[str] = set()
-    fields_map = execution_context.collect_fields(
-        # runtime_type=runtime_type or None,
-        # Use an object that would fail GraphQL internal tests
-        runtime_type=runtime_type or graphql.GraphQLObjectType('<temp>', []),  # type: ignore[arg-type]
-        selection_set=selection_set,
-        fields={},  # (out) memo
-        visited_fragment_names=visited_fragment_names, # out
-    )
-
-    # Test fragment resolution
-    if visited_fragment_names and not runtime_type:
-        raise RuntimeError(f'GraphQL query contains fragments but this particular query does not support them '
-                           f'because object type was not specified in the code. Failed fragments: {", ".join(visited_fragment_names)}')
+    # Collect fields
+    fields_map = _compat_collect_fields(schema, fragments, variable_values, runtime_type, selection_set)
 
     # Results!
     return fields_map
@@ -273,3 +252,56 @@ class GraphqlFieldCollector(graphql.ExecutionContext):
         self.schema = schema
         self.fragments = fragments
         self.variable_values = variable_values
+
+
+def _compat_collect_fields(
+    schema: graphql.GraphQLSchema,
+    fragments: dict[str, graphql.FragmentDefinitionNode],
+    variable_values: dict[str, Any],
+    runtime_type: graphql.GraphQLObjectType,
+    selection_set: graphql.SelectionSetNode,
+):
+    # Old Graphql-Core: we have to fake ExecutionContext
+    # This is a workaround because collect_fields() is only available as a method of ExecutionContext,
+    # but we need to use it without one.
+    if graphql.version_info < (3, 2, 0):
+        # Create a fake execution context that is just capable enough to collect fields
+        # It's like a lightweight ExecutionContext that reuses its capabilities
+        execution_context = GraphqlFieldCollector(
+            schema=schema,
+            fragments=fragments,
+            variable_values=variable_values,
+        )
+
+        # Resolve all fields
+        visited_fragment_names: set[str] = set()
+        fields_map = execution_context.collect_fields(
+            # Use an object that would fail GraphQL internal tests
+            # runtime_type=runtime_type or None,
+            runtime_type=runtime_type or graphql.GraphQLObjectType('_x_temp', []),  # type: ignore[arg-type]
+            selection_set=selection_set,
+            fields={},  # (out) memo
+            visited_fragment_names=visited_fragment_names,  # out
+        )
+    # New Graphql-Core: collect_fields() is a standalone function now
+    else:
+        from graphql.execution.collect_fields import collect_fields_impl
+
+        visited_fragment_names: set[str] = set()
+        fields_map: dict = {}
+        collect_fields_impl(
+            schema=schema,
+            fragments=fragments,
+            variable_values=variable_values,
+            runtime_type=runtime_type or graphql.GraphQLObjectType('_x_temp', []),  # type: ignore[arg-type]
+            selection_set=selection_set,
+            fields=fields_map,  # (out) memo
+            visited_fragment_names=visited_fragment_names,  # out
+        )
+
+    # Test fragment resolution
+    if visited_fragment_names and not runtime_type:
+        raise RuntimeError(f'GraphQL query contains fragments but this particular query does not support them '
+                           f'because object type was not specified in the code. Failed fragments: {", ".join(visited_fragment_names)}')
+
+    return fields_map
