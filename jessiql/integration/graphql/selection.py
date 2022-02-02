@@ -23,7 +23,7 @@ def selected_field_names_from_info(info: graphql.GraphQLResolveInfo, runtime_typ
             names = selected_field_names_from_info(info, 'User')
     """
     assert len(info.field_nodes) == 1  # I've never seen a selection of > 1 field
-    field_node = info.field_nodes[0]
+    field_node = list(info.field_nodes)[0]  # we cannot do [0] directly on its type: `Collection`
 
     return selected_field_names(
         info.schema,
@@ -233,7 +233,7 @@ def collect_fields(
         runtime_type = schema.type_map[runtime_type]  # type: ignore[assignment]  # raises: KeyError
 
     # Collect fields
-    fields_map = _compat_collect_fields(schema, fragments, variable_values, runtime_type, selection_set)
+    fields_map = _compat_collect_fields(schema, fragments, variable_values, runtime_type, selection_set)  # type: ignore[arg-type]
 
     # Results!
     return fields_map
@@ -258,7 +258,7 @@ def _compat_collect_fields(
     schema: graphql.GraphQLSchema,
     fragments: dict[str, graphql.FragmentDefinitionNode],
     variable_values: dict[str, Any],
-    runtime_type: graphql.GraphQLObjectType,
+    runtime_type: Optional[graphql.GraphQLObjectType],
     selection_set: graphql.SelectionSetNode,
 ):
     # Old Graphql-Core: we have to fake ExecutionContext
@@ -275,7 +275,7 @@ def _compat_collect_fields(
 
         # Resolve all fields
         visited_fragment_names: set[str] = set()
-        fields_map = execution_context.collect_fields(
+        fields_map = execution_context.collect_fields(  # type: ignore[attr-defined]
             # Use an object that would fail GraphQL internal tests
             # runtime_type=runtime_type or None,
             runtime_type=runtime_type or graphql.GraphQLObjectType('_x_temp', []),  # type: ignore[arg-type]
@@ -287,8 +287,8 @@ def _compat_collect_fields(
     else:
         from graphql.execution.collect_fields import collect_fields_impl
 
-        visited_fragment_names: set[str] = set()
-        fields_map: dict = {}
+        visited_fragment_names: set[str] = set()  # type: ignore[no-redef]
+        fields_map: dict = {}  # type: ignore[no-redef]
         collect_fields_impl(
             schema=schema,
             fragments=fragments,

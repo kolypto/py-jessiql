@@ -30,10 +30,10 @@ class CursorImplementation(Generic[PageInfoT, CursorDataT]):
     name: ClassVar[str]
 
     # Which Page Info class to use
-    PageInfo: ClassVar[type[PageInfoT]]
+    PageInfo: ClassVar[type[PageInfoT]]  # type: ignore[misc]
 
     # Which Cursor Data class to use
-    CursorData: ClassVar[type[CursorDataT]]
+    CursorData: ClassVar[type[CursorDataT]]  # type: ignore[misc]
 
     # Page info: the data got by analyzing result rows
     page_info: PageInfoT

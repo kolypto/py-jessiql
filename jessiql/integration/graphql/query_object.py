@@ -53,7 +53,7 @@ def query_object_for(info: graphql.GraphQLResolveInfo, nested_path: abc.Iterable
             names = query_object_from_info(info, 'User')
     """
     assert len(info.field_nodes) == 1  # I've never seen a selection of > 1 field
-    field_node = info.field_nodes[0]
+    field_node = list(info.field_nodes)[0]  # we cannot do [0] directly on its type: `Collection`
     parent_type = info.parent_type
 
     # Get selected field definition

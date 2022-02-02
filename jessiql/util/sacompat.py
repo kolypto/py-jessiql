@@ -1,5 +1,6 @@
 import sqlalchemy as sa
 from collections import abc
+from typing import Union
 
 from jessiql.sainfo.version import *  # noqa: shortcut
 
@@ -12,7 +13,7 @@ except ImportError:
     from sqlalchemy.ext.declarative import declarative_base, DeclarativeMeta
 
 
-def add_columns_if_missing(stmt: sa.sql.Select, columns: abc.Iterable[sa.Column]) -> sa.sql.Select:
+def add_columns_if_missing(stmt: sa.sql.Select, columns: abc.Iterable[Union[sa.Column, sa.sql.ColumnElement]]) -> sa.sql.Select:
     """ Add columns to an SQL Select statement, but only if they're not already added """
 
     # NOTE: in SqlAlchemy 1.4.23 add_columns() does not do de-duplication anymore.
@@ -26,7 +27,7 @@ def add_columns_if_missing(stmt: sa.sql.Select, columns: abc.Iterable[sa.Column]
     return add_columns(stmt, new_columns)
 
 
-def add_columns(stmt: sa.sql.Select, columns: abc.Iterable[sa.Column]) -> sa.sql.Select:
+def add_columns(stmt: sa.sql.Select, columns: abc.Iterable[Union[sa.Column, sa.sql.ColumnElement]]) -> sa.sql.Select:
     """ Add columns to an SQL Select statement """
     if SA_13:
         for col in columns:
