@@ -104,7 +104,7 @@ def drop_existing_tables(bind: EngineOrConnection):
 
 
 def check_recreate_necessary(bind: EngineOrConnection, metadata: MetaData) -> bool:
-    """ See if if it's necessary to recreate tables?
+    """ See if it's necessary to recreate tables?
 
     List all existing table columns, compare them with the models.
     Tell if there's been any modifications.
