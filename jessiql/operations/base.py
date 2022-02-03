@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import sqlalchemy as sa
-from mypy.options import TYPE_CHECKING
+from typing import TYPE_CHECKING
 
 from jessiql.query_object import QueryObject
 from jessiql.typing import SAModelOrAlias
