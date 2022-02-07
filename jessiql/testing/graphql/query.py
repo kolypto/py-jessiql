@@ -17,6 +17,7 @@ def graphql_query_sync(schema: graphql.GraphQLSchema, query: str, context_value:
             raise res.errors[0]
         # Many errors? Raise as a list
         else:
+            # TODO: In Python 3.11, raise ExceptionGroup
             raise RuntimeError(res.errors)
 
     return res.data
