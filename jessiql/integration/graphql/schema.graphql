@@ -3,7 +3,7 @@ input QueryObjectInput {
     # select: gotten from the GraphQL tree itself
     filter: Object
     sort: [String!]
-    skip: Int
+    skip: ID
     limit: Int
 }
 
@@ -16,7 +16,3 @@ type QueryObject {
     skip: Int
     limit: Int
 }
-
-
-""" Simple JSON Object """
-scalar Object

@@ -67,8 +67,6 @@ def build_resolve_info_for(schema: graphql.GraphQLSchema, query: graphql.Documen
     query_node: graphql.ExecutableDefinitionNode = query.definitions[0]  # type: ignore[assignment]
     query_selection = query_node.selection_set.selections
 
-    print(graphql.version_info, graphql.version_info <= (3, 1, 2))
-
     return execution_context.build_resolve_info(
         field_def=graphql.utilities.type_info.get_field_def(schema, query_type, query_selection[0]), # type: ignore[arg-type]
         field_nodes=query_selection, # type: ignore[arg-type]

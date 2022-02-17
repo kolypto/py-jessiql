@@ -25,6 +25,8 @@ class SkipQuery(OperationInputBase):
             return cls(skip=None, page=None)
         elif isinstance(skip, int):
             return cls(skip=skip, page=None)
+        elif isinstance(skip, str) and skip.isdigit():
+            return cls(skip=int(skip), page=None)
         elif isinstance(skip, str) and (skip.startswith('skip:') or skip.startswith('keys:')):
             return cls(skip=None, page=skip)
         else:

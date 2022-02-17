@@ -6,3 +6,5 @@ pwd = os.path.dirname(__file__)
 # Get this schema
 with open(os.path.join(pwd, './schema.graphql'), 'rt') as f:
     graphql_jessiql_schema = f.read()
+with open(os.path.join(pwd, './object.graphql'), 'rt') as f:
+    graphql_jessiql_schema += f.read()
