@@ -15,12 +15,12 @@ from typing import Union, Any, Optional
 #   > runtime_type = get_operation_root_type(self.schema, operation)
 
 
-def selected_field_names_from_info(info: graphql.GraphQLResolveInfo, runtime_type: Union[str, graphql.GraphQLObjectType] = None) -> abc.Iterator[str]:
+def selected(info: graphql.GraphQLResolveInfo, runtime_type: Union[str, graphql.GraphQLObjectType] = None) -> abc.Iterator[str]:
     """ Shortcut: selected_field_names() when used in a resolve function
 
     Example:
         def resolve_user(obj, info):
-            names = selected_field_names_from_info(info, 'User')
+            names = selected(info, 'User')
     """
     assert len(info.field_nodes) == 1  # I've never seen a selection of > 1 field
     field_node = list(info.field_nodes)[0]  # we cannot do [0] directly on its type: `Collection`
@@ -32,6 +32,24 @@ def selected_field_names_from_info(info: graphql.GraphQLResolveInfo, runtime_typ
         field_node.selection_set,  # type: ignore[arg-type]
         runtime_type=runtime_type
     )
+
+
+def selected_naive(info: graphql.GraphQLResolveInfo) -> abc.Iterator[str]:
+    """ Shortcut: selected_field_names_naive. Quick version.
+
+    Note: only works without fragments.
+    To have fragments support, use selected()
+
+    Example:
+        def resolve_list(_, info):
+            return {
+                'count': 10 if 'count' in field_names(info) else None,
+            }
+    """
+    assert len(info.field_nodes) == 1  # I've never seen a selection of > 1 field
+    field_node = list(info.field_nodes)[0]  # we cannot do [0] directly on its type: `Collection`
+
+    return selected_field_names_naive(field_node.selection_set)  # type: ignore[arg-type]
 
 
 def selected_field_names(

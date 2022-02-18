@@ -8,7 +8,7 @@ import sqlalchemy as sa
 import sqlalchemy.orm
 
 from jessiql import sainfo
-from .defs import QueryFieldInfo, QUERY_FIELD_SKIP
+from .defs import FieldQueryInfo, QUERY_FIELD_SKIP
 
 
 class QueryModelField:
@@ -45,7 +45,7 @@ class QueryModelField:
         self.Model = Model
         self.mapper: sa.orm.Mapper = sa.orm.class_mapper(Model)
 
-    def __call__(self, field_name: str, field_def: graphql.type.definition.GraphQLField, path: tuple[str]) -> QueryFieldInfo:
+    def __call__(self, field_name: str, field_def: graphql.type.definition.GraphQLField, path: tuple[str, ...]) -> FieldQueryInfo:
         # Follow path, get nested mapper
         mapper = get_mapper_for_path(self.mapper, path)  # raises: KeyError for unknown attributes in `path`
 
@@ -61,17 +61,17 @@ class QueryModelField:
 
         # Column?
         if sainfo.columns.is_column(attr):
-            return QueryFieldInfo(select=[field_name])
+            return FieldQueryInfo(select=[field_name])
         # Relationship?
         elif sainfo.relations.is_relation(attr):
-            return QueryFieldInfo(join_name=field_name)
+            return FieldQueryInfo(join_name=field_name)
         # Some unsupported attribute
         else:
             return QUERY_FIELD_SKIP
 
 
 @lru_cache(maxsize=100)
-def get_mapper_for_path(mapper: sa.orm.Mapper, path: tuple[str]) -> sa.orm.Mapper:
+def get_mapper_for_path(mapper: sa.orm.Mapper, path: tuple[str, ...]) -> sa.orm.Mapper:
     """ Follow `path` of attribute names, get down to the mapper through relationships
 
     Args:

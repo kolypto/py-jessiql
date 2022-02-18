@@ -1,3 +1,4 @@
+import os
 import pytest
 import sqlalchemy as sa
 import sqlalchemy.orm
@@ -6,9 +7,10 @@ import graphql
 from graphql import graphql_sync
 from graphql import GraphQLResolveInfo
 
+import jessiql
 from jessiql import QueryObjectDict
 from jessiql.integration.graphql import query_object_for
-from jessiql.integration.graphql.query_field.sa_model import QueryModelField
+from jessiql.integration.graphql.field_query import QueryModelField, RenameField, FieldQuery
 from jessiql.testing.graphql import prepare_graphql_query_for, resolves
 from jessiql.util import sacompat
 
@@ -253,6 +255,19 @@ def test_query_object(query: str, variables: dict, expected_result_query: dict):
     ''',
     query(select=['id', 'a', 'b', 'c']),
     ),
+    # Test: camelCase field conversion
+    (
+    '''
+    query {
+        object {
+            id a b c
+            objectId
+            query
+        }
+    }
+    ''',
+    query(select=['id', 'a', 'b', 'c', 'object_id']),
+    ),
     # Test: nested objects
     (
     '''
@@ -299,8 +314,21 @@ def test_query_object_with_sa_model(query_str: str, expected_query_object: dict)
     # Prepare the schema and the query document
     qctx = prepare_graphql_query_for(schema_prepare(), query_str)
 
+    # Query Field processor
+    def renamer(name: str) -> str:
+        # We don't have ariadne here, so let's fake it
+        if name == 'objectId':
+            return 'object_id'
+        else:
+            return name
+
+    field_query = FieldQuery(
+        RenameField(renamer),
+        QueryModelField(Model),
+    )
+
     # Get the Query Object
-    query_object = query_object_for(qctx.info, runtime_type='Model', field_query=QueryModelField(Model))
+    query_object = query_object_for(qctx.info, runtime_type='Model', field_query=field_query)
     assert query_object.dict() == expected_query_object
 
 
@@ -321,8 +349,8 @@ def test_query_object_with_sa_model(query_str: str, expected_query_object: dict)
 def test_query_object_relay_pagination(query_str: str, variables: dict, expected_query_object: dict):
     """ Test how Query Object is generated for Relay pagination """
     # Prepare our schema
-    from jessiql.integration.graphql.relay import graphql_jessiql_schema, graphql_relay_schema
-    from jessiql.integration.graphql.relay import relay_query_object_for
+    from jessiql.integration.graphql.pager_relay import relay_query_object_for
+
     # language=graphql
     schema = ("""
         type Query {
@@ -344,7 +372,11 @@ def test_query_object_relay_pagination(query_str: str, variables: dict, expected
             login: String
             email: String
         }
-    """ + graphql_jessiql_schema + graphql_relay_schema)
+    """
+        + load_graphql_file(jessiql.integration.graphql, 'query_object.graphql')
+        + load_graphql_file(jessiql.integration.graphql, 'object.graphql')
+        + load_graphql_file(jessiql.integration.graphql, 'pager_relay.graphql')
+    )
 
     # Prepare the schema and the query document
     qctx = prepare_graphql_query_for(schema, query_str)
@@ -352,6 +384,7 @@ def test_query_object_relay_pagination(query_str: str, variables: dict, expected
     # Get the Query Object
     query_object = relay_query_object_for(qctx.info, runtime_type='User')
     assert query_object.dict() == expected_query_object
+
 
 
 # language=graphql
@@ -391,9 +424,15 @@ type Model {
 
 
 def schema_prepare() -> str:
-    from jessiql.integration.graphql.schema import graphql_jessiql_schema
     return (
         GQL_SCHEMA +
         # Also load QueryObject and QueryObjectInput
-        graphql_jessiql_schema
+        load_graphql_file(jessiql.integration.graphql, 'query_object.graphql') +
+        load_graphql_file(jessiql.integration.graphql, 'object.graphql')
     )
+
+
+def load_graphql_file(module, filename: str):
+    """ Load *.graphql file from a module """
+    with open(os.path.join(*module.__path__, filename), 'rt') as f:
+        return f.read()

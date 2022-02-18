@@ -89,7 +89,7 @@ class KeysetCursor(CursorImplementation[KeysetPageInfo, KeysetCursorData]):
         * The final sort field is a non-nullable unique key
         * Sort fields are available with "select"
         """
-        debug = False  # change to inspect exactly why keyset pagination is not possible
+        debug = 0  # change to inspect exactly why keyset pagination is not possible
 
         # The query is sorted
         if not query.sort.fields:

@@ -2,25 +2,18 @@
 
 from __future__ import annotations
 
-import os.path
 import graphql
 from collections import abc
 from typing import Union, TypedDict, Optional
 
-from jessiql.features.cursor import QueryPage, PageLinks
+from jessiql.features.cursor import QueryPage
 from .query_object import query_object_for, query_every_field
-from .query_object import QueryFieldFunc, QueryObject
-from .schema import pwd
-from .schema import graphql_jessiql_schema  # noqa: shortcut
-
-# Get this schema
-with open(os.path.join(pwd, './relay.graphql'), 'rt') as f:
-    graphql_relay_schema = f.read()
+from .query_object import FieldQueryFunc, QueryObject
 
 
 def relay_query_object_for(info: graphql.GraphQLResolveInfo, nested_path: abc.Iterable[str] = ('edges', 'node'), *,
                            runtime_type: Union[str, graphql.GraphQLObjectType] = None,
-                           field_query: QueryFieldFunc = query_every_field,
+                           field_query: FieldQueryFunc = query_every_field,
                            first: int = None, after: str = None,
                            last: int = None, before: str = None,
                            ) -> QueryObject:
@@ -50,9 +43,15 @@ class ConnectionDict(TypedDict):
     pageInfo: PageInfoDict
 
 
+class ConnectionSnakeDict(TypedDict):
+    """ Relay Connection type, snake case """
+    edges: list[EdgeDict]
+    page_info: PageInfoSnakeDict
+
+
 class EdgeDict(TypedDict):
     """ Relay Edge type: paginated item """
-    node: object
+    node: Union[object, dict]
     cursor: Optional[str]
 
 
@@ -62,3 +61,11 @@ class PageInfoDict(TypedDict):
     hasNextPage: bool
     startCursor: Optional[str]
     endCursor: Optional[str]
+
+
+class PageInfoSnakeDict(TypedDict):
+    """ Relay page into, snake case """
+    has_previous_page: bool
+    has_next_page: bool
+    start_cursor: Optional[str]
+    end_cursor: Optional[str]

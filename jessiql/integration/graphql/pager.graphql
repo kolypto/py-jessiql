@@ -1,0 +1,7 @@
+type PagerInfo {
+    """ Cursor to the previous page, if any """
+    prev: String
+
+    """ Cursor to the next page, if any """
+    next: String
+}

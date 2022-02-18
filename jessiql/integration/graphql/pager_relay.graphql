@@ -4,7 +4,7 @@ interface Connection {
 #    edges: [Edge!]!
 
     """ Pagination info """
-    pageInfo: PageInfo
+    pageInfo: PageInfo!
 }
 
 """ Base: paginated item, one, with meta information """

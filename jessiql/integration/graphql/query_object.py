@@ -15,14 +15,15 @@ from jessiql import QueryObjectDict, QueryObject
 
 from .query_object_argument import get_query_argument_name_for
 from .selection import collect_fields
-from .query_field import QueryFieldFunc, QueryFieldInfo, query_every_field
+from .field_query import FieldQueryFunc, FieldQueryInfo, query_every_field
 
 
 def query_object_for(info: graphql.GraphQLResolveInfo, nested_path: abc.Iterable[str] = (), *,
                      runtime_type: Union[str, graphql.GraphQLObjectType] = None,
-                     field_query: QueryFieldFunc = query_every_field,
+                     field_query: FieldQueryFunc = query_every_field,
                      query_argument: Optional[str] = None,
                      has_query_argument: bool = True,
+                     query_object_type_name: str = None,
                      ) -> QueryObject:
     """ Inspect the GraphQL query and make a Query Object Dict.
 
@@ -47,7 +48,7 @@ def query_object_for(info: graphql.GraphQLResolveInfo, nested_path: abc.Iterable
         field_query: A function to decide how a particular field should be included into the Query Object.
         query_argument: The name of the Query Object argument. Default: auto-detect by type: QueryObjectInput
         has_query_argument: Shall we attempt to get the value of the query argument?
-
+        query_object_type_name: QueryObjectInput type name. Provide if overridden.
     Example:
         def resolve_user(obj, info):
             names = query_object_from_info(info, 'User')
@@ -85,9 +86,10 @@ def graphql_query_object_dict_from_query(
         selected_field: graphql.FieldNode,
         nested_path: abc.Iterable[str] = (),
         runtime_type: Union[str, graphql.GraphQLObjectType] = None,
-        field_query: QueryFieldFunc = query_every_field,
+        field_query: FieldQueryFunc = query_every_field,
         query_argument: Optional[str] = None,
         has_query_argument: bool = True,
+        query_object_type_name: str = None,
         _field_query_path: tuple[str, ...] = (),
 ) -> QueryObjectDict:
     """ Inspect the GraphQL query and make a Query Object Dict.
@@ -105,7 +107,7 @@ def graphql_query_object_dict_from_query(
         field_query: A function to decide how a particular field should be included into the Query Object
         query_argument: The name of the Query Object argument. Default: auto-detect by type: QueryObjectInput
         has_query_argument: Shall we attempt to get the value of the query argument?
-
+        query_object_type_name: QueryObjectInput type name. Provide if overridden.
     Returns:
         Query Object Dict.
 
@@ -115,7 +117,7 @@ def graphql_query_object_dict_from_query(
     """
     # Get the query argument name and the Query Object Input
     if has_query_argument:
-        query_arg_name = query_argument or get_query_argument_name_for(selected_field_def)
+        query_arg_name = query_argument or get_query_argument_name_for(selected_field_def, query_object_type_name=query_object_type_name)
         assert query_arg_name is not None, 'Current field has no JessiQL Query Object argument'
         query_arg = get_query_argument_value_for(selected_field, query_arg_name, variable_values) or {}
     # Sometimes there might be no QueryObject input at all: e.g. mutation methods. Filter & sort make no sense with them.
@@ -174,7 +176,10 @@ def graphql_query_object_dict_from_query(
                 continue
 
             # How to include this field?
-            info: QueryFieldInfo = field_query(schema_field_name, field_def, _field_query_path)
+            info: Optional[FieldQueryInfo] = field_query(schema_field_name, field_def, _field_query_path)
+            if info is None:
+                # Skip the field
+                continue
 
             # Select field
             if info.select:

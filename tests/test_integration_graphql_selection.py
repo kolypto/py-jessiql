@@ -7,7 +7,7 @@ from contextlib import nullcontext as does_not_raise
 from jessiql.integration.graphql import (
     selected_field_names,
     selected_field_names_naive,
-    selected_field_names_from_info,
+    selected,
     selected_fields_tree,
 )
 
@@ -118,7 +118,7 @@ def test_selection_in_resolver(query: str, runtime_type: Optional[str], expected
     """ Test selected_field_names() when used in a resolver function """
     # GraphQL resolver
     def resolve_object(obj, info: graphql.GraphQLResolveInfo):
-        names = selected_field_names_from_info(info, runtime_type=runtime_type)
+        names = selected(info, runtime_type=runtime_type)
         return {'id': 1, 'name': ' '.join(sorted(names))}  # return as a name
 
     # Prepare our schema

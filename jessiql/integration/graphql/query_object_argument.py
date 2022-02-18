@@ -16,7 +16,7 @@ QUERY_OBJECT_INPUT_NAME = 'QueryObjectInput'
 QUERY_OBJECT_NAME = 'QueryObject'
 
 
-def get_query_argument_name_for(field_def: graphql.GraphQLField) -> Optional[str]:
+def get_query_argument_name_for(field_def: graphql.GraphQLField, *, query_object_type_name: str = None) -> Optional[str]:
     """ Get the name of the `query` argument (found by its type)
 
     Example:
@@ -36,9 +36,13 @@ def get_query_argument_name_for(field_def: graphql.GraphQLField) -> Optional[str
     Returns:
         argument name (str), or None if not found.
     """
+    # Default override?
+    query_object_input_name = query_object_type_name or QUERY_OBJECT_INPUT_NAME
+
+    # Find it
     for arg_name, arg in field_def.args.items():
         field_type = unwrap_type(arg.type)
-        if field_type.name == QUERY_OBJECT_INPUT_NAME:  # type: ignore[union-attr]
+        if field_type.name == query_object_input_name:  # type: ignore[union-attr]
             return arg_name
     else:
         return None
