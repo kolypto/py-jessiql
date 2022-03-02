@@ -77,6 +77,7 @@ def loads_attributes_readcode(*extra_attribute_names: str) -> abc.Callable[[Same
     Args:
         *extra_attribute_names: Additional attribute names (e.g. from invisible nested functions)
     """
+    # TODO: postpone reading code until it's actually needed. Save some start-up time.
     def wrapper(fget: SameFunction) -> SameFunction:
         return loads_attributes(
             *func_uses_attributes(fget),  # type: ignore[arg-type]
@@ -87,7 +88,7 @@ def loads_attributes_readcode(*extra_attribute_names: str) -> abc.Callable[[Same
 
 
 def is_annotated_with_loads(prop: property) -> bool:
-    """ Is the property annotated with @lohasattr(prop, )ads_attributes? """
+    """ Is the property annotated with @loads_attributes(prop, )ads_attributes? """
     return hasattr(prop.fget, '_loads_attributes')
 
 

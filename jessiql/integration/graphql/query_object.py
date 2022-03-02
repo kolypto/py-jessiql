@@ -72,6 +72,7 @@ def query_object_for(info: graphql.GraphQLResolveInfo, nested_path: abc.Iterable
             field_query=field_query,
             query_argument=query_argument,
             has_query_argument=has_query_argument,
+            query_object_type_name=query_object_type_name,
         )
 
     # Convert into a QueryObject
@@ -118,7 +119,10 @@ def graphql_query_object_dict_from_query(
     # Get the query argument name and the Query Object Input
     if has_query_argument:
         query_arg_name = query_argument or get_query_argument_name_for(selected_field_def, query_object_type_name=query_object_type_name)
-        assert query_arg_name is not None, 'Current field has no JessiQL Query Object argument'
+        assert query_arg_name is not None, (
+            'Current field has no JessiQL Query Object argument. '
+            'If this is expected, set `has_query_argument=False`.'
+        )
         query_arg = get_query_argument_value_for(selected_field, query_arg_name, variable_values) or {}
     # Sometimes there might be no QueryObject input at all: e.g. mutation methods. Filter & sort make no sense with them.
     else:
