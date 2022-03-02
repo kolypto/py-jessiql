@@ -49,6 +49,10 @@ class QueryModelField:
         # Follow path, get nested mapper
         mapper = get_mapper_for_path(self.mapper, path)  # raises: KeyError for unknown attributes in `path`
 
+        # Property?
+        if sainfo.properties.is_property(mapper.class_, field_name):
+            return FieldQueryInfo(select=[field_name])
+
         # Get field info, skip it if not known to SqlAlchemy
         try:
             attr = mapper.all_orm_descriptors[field_name]
