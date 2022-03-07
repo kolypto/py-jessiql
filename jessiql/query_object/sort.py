@@ -62,7 +62,7 @@ class SortQuery(OperationInputBase):
         ]
 
     @staticmethod
-    def _parse_input_field(field: Union[str]) -> SortingField:
+    def _parse_input_field(field: str) -> SortingField:
         """ Parse a field string into a SortingField object """
         # Look at the ending character
         end_c = field[-1:]

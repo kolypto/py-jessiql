@@ -1,6 +1,6 @@
 import json
 
-from .query_object import QueryObjectDict
+from ..query_object import QueryObjectDict
 
 
 def query_object_param(query_object: QueryObjectDict = None, **query_object_dict) -> dict[str, str]:
