@@ -4,7 +4,7 @@ from functools import partial
 from typing import Union
 
 from jessiql.query_object import QueryObject, QueryObjectDict
-from .query_executor import QueryExecutor
+from .query_executor import QueryExecutor, QuerySettings
 
 
 class Query(QueryExecutor):
@@ -14,7 +14,7 @@ class Query(QueryExecutor):
         query_object = dict(select=['login'])
         q = Query(query_object, models.User)
     """
-    def __init__(self, query: Union[QueryObject, QueryObjectDict], Model: type):
+    def __init__(self, query: Union[QueryObject, QueryObjectDict], Model: type, settings: QuerySettings = None):
         """ Prepare to make a query with this Query Object against target Model
 
         Args:
@@ -30,7 +30,7 @@ class Query(QueryExecutor):
         query = QueryObject.ensure_query_object(query)
 
         # Proceed
-        super().__init__(query, Model)  # type: ignore[arg-type]
+        super().__init__(query, Model, settings=settings)  # type: ignore[arg-type]
 
     @classmethod
     def prepare(cls, Model: type):

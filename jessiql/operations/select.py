@@ -34,10 +34,6 @@ class SelectOperation(Operation):
     * @hybrid_property
     """
 
-    def __init__(self, query: QueryObject, target_Model: SAModelOrAlias):
-        self.query = query
-        self.target_Model = target_Model
-
     def apply_to_statement(self, stmt: sa.sql.Select) -> sa.sql.Select:
         """ Modify the Select statement: add SELECT fields """
         # Add columns to Select

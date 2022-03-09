@@ -17,6 +17,7 @@ from jessiql.sainfo.models import unaliased_class
 from jessiql.typing import SAModelOrAlias, SARowDict
 
 from .loader import QueryLoaderBase, PrimaryQueryLoader, RelatedQueryLoader
+from .settings import QuerySettings
 
 
 class QueryExecutor:
@@ -34,6 +35,9 @@ class QueryExecutor:
 
     # The target model to execute the Query against
     Model: SAModelOrAlias
+
+    # The Query settings
+    settings: QuerySettings
 
     # Load path: (Model, 'attribute', ...) path to the current model
     # Examples:
@@ -55,7 +59,7 @@ class QueryExecutor:
     # Example usage: provide additional filtering, e.g. for security
     # Example usage:
     #   @query.customize_statements.append
-    #   def security_filter(query: QueryExecutor, stmt: sa.sql.Select):
+    #   def security_filter(query: QueryExecutor, stmt: sa.sql.Select) -> sa.sql.Select:
     #       if query.path == (User,):
     #           return stmt.filter(...)
     customize_statements: list[CustomizeStatementCallable]
@@ -86,7 +90,7 @@ class QueryExecutor:
     # For instance, when "join" is used, holds a QueryExecutor for every relationship by name
     related_executors: dict[str, QueryExecutor]
 
-    def __init__(self, query: QueryObject, Model: SAModelOrAlias):
+    def __init__(self, query: QueryObject, Model: SAModelOrAlias, settings: QuerySettings = None):
         """ Initialize a Query Executor for the given Query Object
 
         Args:
@@ -97,11 +101,12 @@ class QueryExecutor:
         assert isinstance(query, QueryObject)
         self.query = query
         self.Model = Model
+        self.settings = settings or self.DEFAULT_SETTINGS
 
         # Customization handlers
         # May be modified by for_relation()
-        self.customize_statements = []
-        self.customize_results = []
+        self.customize_statements = [self.settings.customize_statement]
+        self.customize_results = [self.settings.customize_result]
 
         # Load path
         # May be modified by for_relation()
@@ -112,10 +117,10 @@ class QueryExecutor:
         self.loader = self.PrimaryQueryLoader()
 
         # Init operations
-        self.select_op = self.SelectOperation(query, Model)
-        self.filter_op = self.FilterOperation(query, Model)
-        self.sort_op = self.SortOperation(query, Model)
-        self.skiplimit_op = self.SkipLimitOperation(query, Model)
+        self.select_op = self.SelectOperation(query, Model, self.settings)
+        self.filter_op = self.FilterOperation(query, Model, self.settings)
+        self.sort_op = self.SortOperation(query, Model, self.settings)
+        self.skiplimit_op = self.SkipLimitOperation(query, Model, self.settings)
 
         # Resolve every input
         resolve_query_object(self.query, self.Model)
@@ -133,6 +138,7 @@ class QueryExecutor:
             relation.name: self.__class__(
                 query=relation.query,
                 Model=relation.property.mapper.class_,
+                settings=self.settings.get_relation_settings(relation.name)
             )._for_relation(
                 # Init as a related executor
                 source_executor=self,
@@ -142,9 +148,8 @@ class QueryExecutor:
         }
 
     __slots__ = (
-        'query', 'Model', 'load_path',
+        'query', 'Model', 'settings', 'load_path',
         'customize_statements', 'customize_results',
-        '_customize_statements', '_customize_results',
         'select_op', 'filter_op', 'sort_op', 'skiplimit_op',
         'loader', 'related_executors',
     )
@@ -233,6 +238,9 @@ class QueryExecutor:
         res: sa.engine.CursorResult = connection.execute(stmt)
         return res.scalar()  # type: ignore[return-value]
 
+    # Default settings object
+    DEFAULT_SETTINGS = QuerySettings()
+
     # Overridable classes: loaders
     # Replace to customize the way data is loaded
     PrimaryQueryLoader = PrimaryQueryLoader
@@ -283,6 +291,18 @@ class QueryExecutor:
         # First level: (Model,)
         # Second level: (Model, relation name, relationship property)
         return (len(self.load_path) - 1) // 2
+
+    @property
+    def limit(self) -> Optional[int]:
+        """ Get the final LIMIT set on the query
+
+        It may be changed because of:
+        1. User query
+        2. Default limit
+        3. Max limit
+        4. Some extension
+        """
+        return self.skiplimit_op.limit
 
     def statement(self) -> sa.sql.Select:
         """ Build an SQL SELECT statement for the current Model.

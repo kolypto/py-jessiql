@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Optional
+from typing import Optional, TYPE_CHECKING
 
 import sqlalchemy as sa
 
@@ -12,6 +12,10 @@ from jessiql.sainfo.version import SA_14
 from .base import Operation
 from .sort import get_sort_fields_with_direction
 from ..util.sacompat import add_columns
+
+
+if TYPE_CHECKING:
+    from jessiql.engine.settings import QuerySettings
 
 
 class SkipLimitOperation(Operation):
@@ -28,14 +32,14 @@ class SkipLimitOperation(Operation):
     skip: Optional[int]
     limit: Optional[int]
 
-    def __init__(self, query: QueryObject, target_Model: SAModelOrAlias):
-        super().__init__(query, target_Model)
+    def __init__(self, query: QueryObject, target_Model: SAModelOrAlias, settings: QuerySettings):
+        super().__init__(query, target_Model, settings)
         self._window_over_foreign_keys = None
 
         # Prepare the values in advance
         # Why? because subclasses may want to modify it.
         self.skip = self.query.skip.skip
-        self.limit = self.query.limit.limit
+        self.limit = self.settings.get_final_limit(self.query.limit.limit)
 
     __slots__ = '_window_over_foreign_keys', 'skip', 'limit'
 

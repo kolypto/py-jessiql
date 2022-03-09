@@ -8,6 +8,8 @@ Overview:
 """
 
 from .query import Query
+from .settings import QuerySettings
+
 from .query_executor import QueryExecutor
 from .query_executor import LoadPath
 from .query_executor import CustomizeResultsCallable, CustomizeStatementCallable

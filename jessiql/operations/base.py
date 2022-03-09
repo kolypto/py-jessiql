@@ -9,16 +9,19 @@ from jessiql.typing import SAModelOrAlias
 
 if TYPE_CHECKING:
     from jessiql.engine.query_executor import QueryExecutor
+    from jessiql.engine.settings import QuerySettings
 
 
 class Operation:
     """ Base for all operations. Defines the interface """
     query: QueryObject
     target_Model: SAModelOrAlias
+    settings: QuerySettings
 
-    def __init__(self, query: QueryObject, target_Model: SAModelOrAlias):
+    def __init__(self, query: QueryObject, target_Model: SAModelOrAlias, settings: QuerySettings):
         self.query = query
         self.target_Model = target_Model
+        self.settings = settings
 
     def for_query(self, query_executor: QueryExecutor):
         """ Bind this operation to a QueryExecutor
@@ -29,7 +32,7 @@ class Operation:
         """
         return self
 
-    __slots__ = 'query', 'target_Model'
+    __slots__ = 'query', 'target_Model', 'settings'
 
     def apply_to_statement(self, stmt: sa.sql.Select) -> sa.sql.Select:
         """ Modify the SQL Select statement that produces resulting rows """
