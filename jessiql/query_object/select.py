@@ -70,11 +70,14 @@ class SelectQuery(OperationInputBase):
         if not isinstance(join, dict):
             raise exc.QueryObjectError(f'"join" must be an array')
 
+        # Combine
+        input: list[Union[str, dict]] = [*select, join]
+
         # Tell fields and relations apart
         fields: list[SelectedField] = []
         relations: list[SelectedRelation] = []
 
-        for field in (*select, join):
+        for field in input:
             # str: 'field_name'
             if isinstance(field, str):
                 fields.append(SelectedField(name=field))  # type: ignore[call-arg]

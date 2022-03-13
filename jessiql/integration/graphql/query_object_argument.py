@@ -37,6 +37,7 @@ def get_query_argument_name_for(field_def: graphql.GraphQLField, *, query_object
         argument name (str), or None if not found.
     """
     # Default override?
+    # NOTE: intentionally NOT provided as a default value so that you can patch the module
     query_object_input_name = query_object_type_name or QUERY_OBJECT_INPUT_NAME
 
     # Find it

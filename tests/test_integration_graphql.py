@@ -10,8 +10,8 @@ from graphql import GraphQLResolveInfo
 import jessiql
 from jessiql import QueryObjectDict
 from jessiql.integration.graphql import query_object_for
-from jessiql.integration.graphql.field_query import QueryModelField, RenameField, FieldQuery
 from jessiql.testing.graphql import prepare_graphql_query_for, resolves
+from jessiql.query_object import rewrite
 from jessiql.util import sacompat
 
 from tests.util.models import IdManyFieldsMixin
@@ -37,9 +37,9 @@ def query(**fields):
 @pytest.mark.parametrize(('query', 'variables', 'expected_result_query'), [
     # Test: no explicit JessiQL query
     (
-        ''' 
-        query { 
-            object { id query } 
+        '''
+        query {
+            object { id query }
         }
         ''',
         {},
@@ -53,10 +53,10 @@ def query(**fields):
     ),
     # Test: field aliases
     (
-            ''' 
-            query { 
-                first: object { first_id: id query } 
-                second: object { second_id: id query } 
+            '''
+            query {
+                first: object { first_id: id query }
+                second: object { second_id: id query }
             }
             ''',
             {},
@@ -74,9 +74,9 @@ def query(**fields):
     ),
     # Test: JessiQL query: "query" argument
     (
-        ''' 
-        query($query: QueryObjectInput) { 
-            objects( query: $query ) { id query } 
+        '''
+        query($query: QueryObjectInput) {
+            objects( query: $query ) { id query }
         }
         ''',
         {'query': dict(limit=10, sort=['id-'])},
@@ -89,12 +89,12 @@ def query(**fields):
     ),
     # Test: JessiQL nested query, no explicit "query" argument
     (
-        ''' 
-        query($query: QueryObjectInput) { 
-            objects( query: $query ) { 
+        '''
+        query($query: QueryObjectInput) {
+            objects( query: $query ) {
                 id query
-                objects { id } 
-            } 
+                objects { id }
+            }
         }
         ''',
         {'query': dict(sort=['id-'])},
@@ -107,12 +107,12 @@ def query(**fields):
     ),
     # Test: JessiQL nested query
     (
-        ''' 
-        query($query: QueryObjectInput) { 
-            objects { 
+        '''
+        query($query: QueryObjectInput) {
+            objects {
                 id query
-                objects (query: $query) { id } 
-            } 
+                objects (query: $query) { id }
+            }
         }
         ''',
         {'query': dict(sort=['id-'])},
@@ -133,11 +133,11 @@ def query(**fields):
     ),
     # Test: JessiQL nested query for "objects", multi-level
     (
-    ''' query { 
-        objects { 
+    ''' query {
+        objects {
             id query
-            objects { id objects { id } } 
-        } 
+            objects { id objects { id } }
+        }
     }
     ''',
         {},
@@ -162,11 +162,11 @@ def query(**fields):
     ),
     # Test: JessiQL nested query for "object" (singular), multi-level
     (
-        ''' query { 
-            object { 
+        ''' query {
+            object {
                 id query
-                object { id object { id } } 
-            } 
+                object { id object { id } }
+            }
         }
         ''',
             {},
@@ -192,8 +192,8 @@ def query(**fields):
     # Test: does not fail when a non-null parameter is present
     # get_query_argument_name_for() used to fail because it didn't un-wrap wrapper types like NonNull
     (
-        ''' 
-        query($id: Int!, $query: QueryObjectInput) { 
+        '''
+        query($id: Int!, $query: QueryObjectInput) {
             getObject(id: $id, query: $query)
         }
         ''',
@@ -245,15 +245,15 @@ def test_query_object(query: str, variables: dict, expected_result_query: dict):
     (
     '''
     query {
-        object { 
+        object {
             # Real SA model attributes
-            id a b c 
+            id a b c
             # Do not exist on the model
-            x y z query 
+            x y z query
         }
     }
     ''',
-    query(select=['id', 'a', 'b', 'c']),
+    query(select=['id', 'a', 'b', 'c', 'x', 'y', 'z', 'query']),
     ),
     # Test: camelCase field conversion
     (
@@ -266,13 +266,13 @@ def test_query_object(query: str, variables: dict, expected_result_query: dict):
         }
     }
     ''',
-    query(select=['id', 'a', 'b', 'c', 'object_id']),
+    query(select=['id', 'a', 'b', 'c', 'object_id', 'query']),
     ),
     # Test: nested objects
     (
     '''
     query {
-        object { 
+        object {
             # 'a' is real, 'z' is not
             a z
             object {
@@ -280,17 +280,17 @@ def test_query_object(query: str, variables: dict, expected_result_query: dict):
                 objects {
                     a z
                 }
-            } 
+            }
         }
     }
     ''',
     query(
-        select=['a'],
+        select=['a', 'z'],
         join={
             'object': query(
-            select=['a'],
+            select=['a', 'z'],
                 join={
-                    'objects': query(select=['a'])
+                    'objects': query(select=['a', 'z'])
                 }
             ),
         }
@@ -314,30 +314,33 @@ def test_query_object_with_sa_model(query_str: str, expected_query_object: dict)
     # Prepare the schema and the query document
     qctx = prepare_graphql_query_for(schema_prepare(), query_str)
 
-    # Query Field processor
-    def renamer(name: str) -> str:
+    # Prepare QuerySettings
+    def to_snake_case(name: str) -> str:
         # We don't have ariadne here, so let's fake it
         if name == 'objectId':
             return 'object_id'
         else:
             return name
 
-    field_query = FieldQuery(
-        RenameField(renamer),
-        QueryModelField(Model),
+    qsets = jessiql.QuerySettings(
+        rewriter=rewrite.RewriteSAModel(
+            rewrite.Transform(to_snake_case),
+            Model=Model,
+        )
     )
 
     # Get the Query Object
-    query_object = query_object_for(qctx.info, runtime_type='Model', field_query=field_query)
+    api_query_object = query_object_for(qctx.info, runtime_type='Model')
+    query_object = qsets.rewriter.query_object(api_query_object)
     assert query_object.dict() == expected_query_object
 
 
 @pytest.mark.parametrize(('query_str', 'variables', 'expected_query_object'), [
     # Test: Relay query
     (
-        ''' 
-        query { 
-            users { edges { node { id login email } } pageInfo } 
+        '''
+        query {
+            users { edges { node { id login email } } pageInfo }
         }
         ''',
         {},
@@ -356,17 +359,17 @@ def test_query_object_relay_pagination(query_str: str, variables: dict, expected
         type Query {
             users(first: Int, after: String, last: Int, before: String, query: QueryObjectInput): UserConnection
         }
-        
+
         type UserConnection implements Connection {
            edges: [UserEdge!]!
            pageInfo: PageInfo!
         }
-        
+
         type UserEdge implements Edge {
             node: User!
             cursor: String
         }
-        
+
         type User {
             id: ID
             login: String
@@ -392,7 +395,7 @@ GQL_SCHEMA = '''
 type Query {
     object (query: QueryObjectInput): Model
     objects (query: QueryObjectInput): [Model]
-    
+
     # Test a special use case where code failed on wrapped (NonNull) objects
     getObject(id: Int!, query: QueryObjectInput): Int
 }
@@ -404,17 +407,17 @@ type Model {
     b: String!
     c: String!
     d: String!
-    
+
     objectId: ID
     objectIds: [ID]
-    
+
     # Real relationships
     object (query: QueryObjectInput): Model
     objects (query: QueryObjectInput): [Model]
-    
+
     # Virtual attribute that returns the Query Object
     query: Object
-    
+
     # Some virtual attributes that only exist in GraphQL
     x: String!
     y: String!

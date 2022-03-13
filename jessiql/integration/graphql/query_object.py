@@ -15,12 +15,10 @@ from jessiql import QueryObjectDict, QueryObject
 
 from .query_object_argument import get_query_argument_name_for
 from .selection import collect_fields
-from .field_query import FieldQueryFunc, FieldQueryInfo, query_every_field
 
 
 def query_object_for(info: graphql.GraphQLResolveInfo, nested_path: abc.Iterable[str] = (), *,
                      runtime_type: Union[str, graphql.GraphQLObjectType] = None,
-                     field_query: FieldQueryFunc = query_every_field,
                      query_argument: Optional[str] = None,
                      has_query_argument: bool = True,
                      query_object_type_name: str = None,
@@ -45,7 +43,6 @@ def query_object_for(info: graphql.GraphQLResolveInfo, nested_path: abc.Iterable
             Use when Query Object fields are nested within some wrapper object.
         runtime_type: The name for the model you're currently querying. Used to resolve fragments that depend on types.
             If you need to resolve multiple types, call this function multiple times to get different Query Objects.
-        field_query: A function to decide how a particular field should be included into the Query Object.
         query_argument: The name of the Query Object argument. Default: auto-detect by type: QueryObjectInput
         has_query_argument: Shall we attempt to get the value of the query argument?
         query_object_type_name: QueryObjectInput type name. Provide if overridden.
@@ -69,7 +66,6 @@ def query_object_for(info: graphql.GraphQLResolveInfo, nested_path: abc.Iterable
             selected_field=field_node,
             nested_path=nested_path,
             runtime_type=runtime_type,
-            field_query=field_query,
             query_argument=query_argument,
             has_query_argument=has_query_argument,
             query_object_type_name=query_object_type_name,
@@ -87,11 +83,9 @@ def graphql_query_object_dict_from_query(
         selected_field: graphql.FieldNode,
         nested_path: abc.Iterable[str] = (),
         runtime_type: Union[str, graphql.GraphQLObjectType] = None,
-        field_query: FieldQueryFunc = query_every_field,
         query_argument: Optional[str] = None,
         has_query_argument: bool = True,
         query_object_type_name: str = None,
-        _field_query_path: tuple[str, ...] = (),
 ) -> QueryObjectDict:
     """ Inspect the GraphQL query and make a Query Object Dict.
 
@@ -105,7 +99,6 @@ def graphql_query_object_dict_from_query(
             Is used to determine which sub-fields to select from this parent field.
          runtime_type: The name for the model you're currently querying. Used to resolve fragments that depend on types.
             If you need to resolve multiple types, call this function multiple times to get different Query Objects.
-        field_query: A function to decide how a particular field should be included into the Query Object
         query_argument: The name of the Query Object argument. Default: auto-detect by type: QueryObjectInput
         has_query_argument: Shall we attempt to get the value of the query argument?
         query_object_type_name: QueryObjectInput type name. Provide if overridden.
@@ -180,18 +173,14 @@ def graphql_query_object_dict_from_query(
                 continue
 
             # How to include this field?
-            info: Optional[FieldQueryInfo] = field_query(schema_field_name, field_def, _field_query_path)
-            if info is None:
-                # Skip the field
-                continue
+            # If it has a selection, then we include it as a relation -- unless it's decorated with @jessiql_select
+            has_selection = field.selection_set and field.selection_set.selections
+            jessiql_select = get_directive('jessiql_select', field_def.ast_node)
 
-            # Select field
-            if info.select:
-                query_object['select'].extend(info.select)  # type: ignore[union-attr]
-
-            # Join relation
-            if info.join_name:
-                query_object['join'][info.join_name] = graphql_query_object_dict_from_query(  # type: ignore[index]
+            if not has_selection or jessiql_select:
+                query_object['select'].append(schema_field_name)  # type: ignore[union-attr]
+            else:
+                query_object['join'][schema_field_name] = graphql_query_object_dict_from_query(  # type: ignore[index]
                     schema,
                     fragments,
                     variable_values,
@@ -200,14 +189,10 @@ def graphql_query_object_dict_from_query(
                     # TODO: runtime type currently cannot be resolved for sub-queries. This means that fragments cannot be used.
                     #   How to fix? callable() that feeds the type? @directives?
                     runtime_type=None,
-                    field_query=field_query,
-                    _field_query_path=_field_query_path + (info.join_name,),
                 )
-            # Skip other fields
-            else:
-                continue  # skip field
 
     return query_object
+
 
 
 def get_query_argument_value_for(field: graphql.FieldNode, query_arg_name: str, variables: dict[str, Any]) -> Optional[dict]:
@@ -262,5 +247,17 @@ def descend_into_field_with(path: abc.Iterable[str], *, selected_field: graphql.
 
     return selected_field, field_type
 
+
+# copied from: apiens.tools.graphql.ast
+def get_directive(directive_name: str, node: graphql.FieldDefinitionNode = None) -> Optional[graphql.DirectiveNode]:
+    """ Get a directive from a field by name """
+    if not node or not node.directives:
+        return None
+
+    for directive in node.directives:
+        if directive.name.value == directive_name:
+            return directive
+    else:
+        return None
 
 unwrap_type = graphql.get_named_type  # Unwrap GraphQL wrapper types (List, NonNull, etc)
