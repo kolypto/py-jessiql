@@ -3,6 +3,7 @@ __version__ = __import__('pkg_resources').get_distribution('jessiql').version
 from .engine import Query
 from .engine.settings import QuerySettings
 from .query_object import QueryObject, QueryObjectDict
+from .query_object import rewrite
 
 from . import query_object
 from . import exc

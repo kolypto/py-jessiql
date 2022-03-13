@@ -14,6 +14,7 @@ from .filter import FilterQuery, FilterExpressionBase, FieldFilterExpression, Bo
 from .skip import SkipQuery
 from .limit import LimitQuery
 
+from . import rewrite
 from .resolve import (
     resolve_input,
     resolve_input_element,
