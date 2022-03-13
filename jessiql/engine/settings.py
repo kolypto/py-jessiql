@@ -2,7 +2,13 @@ from __future__ import annotations
 
 import dataclasses
 from collections import abc
-from typing import Callable, Optional, Union, TypeVar, TYPE_CHECKING
+from typing import Optional, Union, TYPE_CHECKING
+
+
+if TYPE_CHECKING:
+    import sqlalchemy as sa
+    from .query_executor import QueryExecutor, SARowDict
+    from jessiql.query_object.rewrite.rewrite import Rewriter
 
 
 @dataclasses.dataclass
@@ -13,17 +19,25 @@ class QuerySettings:
     limit result rows, customize queries, configure related queries, etc
     """
     # The `limit` you get by default, if not specified
-    default_limit: int = None
+    default_limit: Optional[int] = None
 
     # The max number of items you get, regardless of the limit
-    max_limit: int = None
+    max_limit: Optional[int] = None
+
+    # Field names rewriter
+    rewriter: Optional[Rewriter] = None
 
     # Settings for nested queries: i.e. relations
     # A mapping { relation name => Query Settings}, where the value can optionally be a lambda
-    relations: dict[str, Union[QuerySettings, abc.Callable[[], QuerySettings]]] = None
+    relations: Optional[dict[str, Union[QuerySettings, abc.Callable[[], QuerySettings]]]] = None
 
     # Getter function for relation settings
-    relation_settings_getter: abc.Callable[[str], Optional[QuerySettings]] = None
+    relation_settings_getter: Optional[abc.Callable[[str], Optional[QuerySettings]]] = None
+
+    def __post_init__(self):
+        if self.rewriter:
+            assert self.rewriter.settings is None, 'Sorry, you cannot associate the same rewriter with multiple QuerySettings. Make a copy().'
+            self.rewriter.settings = self
 
     # ### Callbacks for QueryExecutor
     # QueryExecutor and Operations will use these methods to apply the settings
@@ -54,7 +68,7 @@ class QuerySettings:
         """
         return (
             # Use the getter function, if provided
-            (self.relation_settings_getter and self.relation_settings_getter()) or
+            (self.relation_settings_getter and self.relation_settings_getter(relation_name)) or
             # Fall back to the dict key, if available
             _getitem_callable(self.relations, relation_name) or
             # Give None, if nothing worked
@@ -83,7 +97,7 @@ class QuerySettings:
         # TODO: implement nested customization handler that uses nested settings and invokes customization without `path` complexity
         return stmt
 
-    def customize_result(self, query: QueryExecutor, rows: list[SARowDict]) -> SARowDict:
+    def customize_result(self, query: QueryExecutor, rows: list[SARowDict]) -> list[SARowDict]:
         """ Callback that customizes query results
 
         Used by: QueryExecutor to customize result rows right before they are returned to the user
@@ -101,15 +115,7 @@ def _getitem_callable(d: Optional[dict], k: str):
         return None
 
     value = d.get(k)
-    if isinstance(value, abc.Callable):
+    if callable(value):
         value = value()
 
     return value
-
-
-
-if TYPE_CHECKING:
-    import sqlalchemy as sa
-    import sqlalchemy.orm
-    from .query_executor import CustomizeResultsCallable, CustomizeStatementCallable
-    from .query_executor import QueryExecutor, LoadPath, SARowDict

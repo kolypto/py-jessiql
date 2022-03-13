@@ -1,0 +1,8 @@
+""" Mark the field as a QueryObject.select target (not "join")
+
+Some complex fields are relations, whereas others are columns (e.g. JSON fields).
+This directive tells JessiQL that the field should not be "join"ed.
+
+Note that the QueryObject will lose sub-selection.
+"""
+directive @jessiql_select on FIELD_DEFINITION

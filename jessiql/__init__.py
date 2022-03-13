@@ -1,6 +1,7 @@
 __version__ = __import__('pkg_resources').get_distribution('jessiql').version
 
 from .engine import Query
+from .engine.settings import QuerySettings
 from .query_object import QueryObject, QueryObjectDict
 
 from . import query_object
@@ -13,6 +14,7 @@ from .sainfo.properties import loads_attributes, loads_attributes_readcode
 
 # TODO: README.md
 # TODO: relationship configuration: limited queries & depth
+# TODO: rename sub-fields!!!!! IMPORTANT!
 # TODO: legacy & custom fields: query object to support fields that should be ignored
 
 # TODO: pluck JSON & JSONB attribute with dot-notation in 'select'?

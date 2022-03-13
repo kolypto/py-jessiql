@@ -7,18 +7,16 @@ from collections import abc
 from typing import Union, TypedDict, Optional
 
 from jessiql.features.cursor import QueryPage
-from .query_object import query_object_for, query_every_field
-from .query_object import FieldQueryFunc, QueryObject
+from .query_object import query_object_for, QueryObject
 
 
 def relay_query_object_for(info: graphql.GraphQLResolveInfo, nested_path: abc.Iterable[str] = ('edges', 'node'), *,
                            runtime_type: Union[str, graphql.GraphQLObjectType] = None,
-                           field_query: FieldQueryFunc = query_every_field,
                            first: int = None, after: str = None,
                            last: int = None, before: str = None,
                            ) -> QueryObject:
     """  """
-    query_object = query_object_for(info, nested_path=nested_path, runtime_type=runtime_type, field_query=field_query)
+    query_object = query_object_for(info, nested_path=nested_path, runtime_type=runtime_type)
     # TODO: Use `first`/`after` and insert them into `query_object`
     return query_object
 

@@ -71,6 +71,7 @@ class SelectQuery(OperationInputBase):
             raise exc.QueryObjectError(f'"join" must be an array')
 
         # Tell fields and relations apart
+        field: Union[str, dict]
         fields: list[SelectedField] = []
         relations: list[SelectedRelation] = []
 
