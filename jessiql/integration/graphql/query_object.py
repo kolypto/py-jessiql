@@ -20,7 +20,6 @@ from .selection import collect_fields
 def query_object_for(info: graphql.GraphQLResolveInfo, nested_path: abc.Iterable[str] = (), *,
                      runtime_type: Union[str, graphql.GraphQLObjectType] = None,
                      query_argument: Optional[str] = None,
-                     has_query_argument: bool = True,
                      query_object_type_name: str = None,
                      ) -> QueryObject:
     """ Inspect the GraphQL query and make a Query Object Dict.
@@ -44,7 +43,6 @@ def query_object_for(info: graphql.GraphQLResolveInfo, nested_path: abc.Iterable
         runtime_type: The name for the model you're currently querying. Used to resolve fragments that depend on types.
             If you need to resolve multiple types, call this function multiple times to get different Query Objects.
         query_argument: The name of the Query Object argument. Default: auto-detect by type: QueryObjectInput
-        has_query_argument: Shall we attempt to get the value of the query argument?
         query_object_type_name: QueryObjectInput type name. Provide if overridden.
     Example:
         def resolve_user(obj, info):
@@ -67,7 +65,6 @@ def query_object_for(info: graphql.GraphQLResolveInfo, nested_path: abc.Iterable
             nested_path=nested_path,
             runtime_type=runtime_type,
             query_argument=query_argument,
-            has_query_argument=has_query_argument,
             query_object_type_name=query_object_type_name,
         )
 
@@ -84,7 +81,6 @@ def graphql_query_object_dict_from_query(
         nested_path: abc.Iterable[str] = (),
         runtime_type: Union[str, graphql.GraphQLObjectType] = None,
         query_argument: Optional[str] = None,
-        has_query_argument: bool = True,
         query_object_type_name: str = None,
 ) -> QueryObjectDict:
     """ Inspect the GraphQL query and make a Query Object Dict.
@@ -100,7 +96,6 @@ def graphql_query_object_dict_from_query(
          runtime_type: The name for the model you're currently querying. Used to resolve fragments that depend on types.
             If you need to resolve multiple types, call this function multiple times to get different Query Objects.
         query_argument: The name of the Query Object argument. Default: auto-detect by type: QueryObjectInput
-        has_query_argument: Shall we attempt to get the value of the query argument?
         query_object_type_name: QueryObjectInput type name. Provide if overridden.
     Returns:
         Query Object Dict.
@@ -110,16 +105,11 @@ def graphql_query_object_dict_from_query(
         RuntimeError: fragment was used, but `runtime_type` was not provided
     """
     # Get the query argument name and the Query Object Input
-    if has_query_argument:
-        query_arg_name = query_argument or get_query_argument_name_for(selected_field_def, query_object_type_name=query_object_type_name)
-        assert query_arg_name is not None, (
-            'Current field has no JessiQL Query Object argument. '
-            'If this is expected, set `has_query_argument=False`.'
-        )
-        query_arg = get_query_argument_value_for(selected_field, query_arg_name, variable_values) or {}
-    # Sometimes there might be no QueryObject input at all: e.g. mutation methods. Filter & sort make no sense with them.
-    else:
+    query_arg_name = query_argument or get_query_argument_name_for(selected_field_def, query_object_type_name=query_object_type_name)
+    if query_arg_name is None:
         query_arg = {}
+    else:
+        query_arg = get_query_argument_value_for(selected_field, query_arg_name, variable_values) or {}
 
     # unwrap lists & nonnulls, deal with raw types
     selected_field_type: graphql.type.definition.GraphQLObjectType = unwrap_type(selected_field_def.type)  # type: ignore[assignment]
@@ -189,6 +179,7 @@ def graphql_query_object_dict_from_query(
                     # TODO: runtime type currently cannot be resolved for sub-queries. This means that fragments cannot be used.
                     #   How to fix? callable() that feeds the type? @directives?
                     runtime_type=None,
+                    query_object_type_name=query_object_type_name,
                 )
 
     return query_object
