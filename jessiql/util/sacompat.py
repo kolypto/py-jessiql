@@ -24,7 +24,14 @@ def add_columns_if_missing(stmt: sa.sql.Select, columns: abc.Iterable[Union[sa.C
     else:
         new_columns = (col for col in columns if not stmt.selected_columns.contains_column(col))
 
-    return add_columns(stmt, new_columns)
+    # Further, `new_columns` may itself contain duplicates. Remove them
+    # Removal method: use `col.key`, which is applicable both to InstrumentedAttribute and to Column objects. We expect no duplicate names.
+    columns_to_add = {
+        col.key:col for col in new_columns
+    }.values()
+
+    # Finally, done
+    return add_columns(stmt, columns_to_add)
 
 
 def add_columns(stmt: sa.sql.Select, columns: abc.Iterable[Union[sa.Column, sa.sql.ColumnElement]]) -> sa.sql.Select:

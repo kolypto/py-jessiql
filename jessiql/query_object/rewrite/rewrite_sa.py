@@ -27,7 +27,7 @@ class RewriteSAModel(Rewriter):
 
         # Go through the relationships, move non-relationships to columns
         # Why: because the API user might not know that some nested objects are not relationships.
-        for name in select.relations.keys():
+        for name in list(select.relations):  # allows modification white iterating
             attr = self.mapper.all_orm_descriptors.get(name)
             if not attr or not sainfo.relations.is_relation(attr):
                 select.relations.pop(name)

@@ -15,6 +15,7 @@ from jessiql.sainfo.models import unaliased_class
 from jessiql.sainfo.names import model_name
 from jessiql.typing import SAModelOrAlias, saproperty
 
+
 SameFunction = TypeVar('SameFunction')
 
 
@@ -53,6 +54,11 @@ def loads_attributes(*attribute_names: str, check: bool = True) -> abc.Callable[
             This increases your start-up time, but only by about 0.01ms per property
     """
     def wrapper(fget: SameFunction) -> SameFunction:
+        # Applied to a @property?
+        if isinstance(fget, (property, sa.ext.hybrid.hybrid_property)):
+            wrapper(fget.fget)
+            return fget
+
         # Check by reading the code
         if check:
             code_uses = tuple(func_uses_attributes(fget))  # type: ignore[arg-type]

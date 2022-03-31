@@ -117,5 +117,6 @@ def select_local_columns_for_relations(select: SelectQuery, Model: SAModelOrAlia
     for relation in select.relations.values():
         # Prepare to adapt the statement: i.e. rewrite it using aliased table names
         adapter = LeftRelationshipColumnsAdapter(Model, relation.property)
+
         # Resolve a relationship to a list of columns that should be loaded
         yield from adapter.replace_many(relation.property.local_columns)
