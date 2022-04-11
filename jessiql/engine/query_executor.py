@@ -28,7 +28,7 @@ class QueryExecutor:
     then uses a Loader object to fetch actual rows.
 
     This is a low-level interface.
-    See `Query`
+    See `Query` for shortcuts, helpers, and all sorts of sugar.
     """
     # The Query Object to execute.
     query: QueryObject
@@ -121,6 +121,12 @@ class QueryExecutor:
         self.filter_op = self.FilterOperation(query, Model, self.settings)
         self.sort_op = self.SortOperation(query, Model, self.settings)
         self.skiplimit_op = self.SkipLimitOperation(query, Model, self.settings)
+        self.beforeafter_op = self.BeforeAfterOperation(query, Model, self.settings, self.skiplimit_op)
+
+        # Which operation to use as the paginator?
+        # Is it important to have only one pager operation because they are in conflict.
+        # For first level queries we use before/after (which also supports skip/limit), but for nested operations we only allow skip/limit
+        self.pager_op: Union[operations.SkipLimitOperation, operations.BeforeAfterOperation] = self.beforeafter_op
 
         # Resolve every input
         resolve_query_object(self.query, self.Model)
@@ -131,6 +137,7 @@ class QueryExecutor:
         self.filter_op.for_query(self)
         self.sort_op.for_query(self)
         self.skiplimit_op.for_query(self)
+        self.beforeafter_op.for_query(self)
 
         # Init related executors: QueryExecutor() for every selected relation
         self.related_executors = {
@@ -150,7 +157,7 @@ class QueryExecutor:
     __slots__ = (
         'query', 'Model', 'settings', 'load_path',
         'customize_statements', 'customize_results',
-        'select_op', 'filter_op', 'sort_op', 'skiplimit_op',
+        'select_op', 'filter_op', 'sort_op', 'skiplimit_op', 'beforeafter_op', 'pager_op',
         'loader', 'related_executors',
     )
 
@@ -176,6 +183,7 @@ class QueryExecutor:
         # If it used SKIP/LIMIT, it would ruin result sets because "LIMIT 50" applies to the whole result set!
         # Whereas a window function limit would be able to restrict results per main object.
         self.skiplimit_op.paginate_over_foreign_keys(relation.property.remote_side)
+        self.pager_op = self.skiplimit_op
 
         # Copy customization handlers.
         # These functions should be prepared in such a way that it inspects the `load_path` argument
@@ -252,6 +260,7 @@ class QueryExecutor:
     FilterOperation = operations.FilterOperation
     SortOperation = operations.SortOperation
     SkipLimitOperation = operations.SkipLimitOperation
+    BeforeAfterOperation = operations.BeforeAfterOperation
 
     def _load_results(self, connection: sa.engine.Connection) -> abc.Iterator[SARowDict]:
         """ Build a SELECT statement and fetch results for the current level
@@ -300,9 +309,8 @@ class QueryExecutor:
         1. User query
         2. Default limit
         3. Max limit
-        4. Some extension
         """
-        return self.skiplimit_op.limit
+        return self.pager_op.limit
 
     def statement(self) -> sa.sql.Select:
         """ Build an SQL SELECT statement for the current Model.
@@ -352,9 +360,9 @@ class QueryExecutor:
         for handler in self.customize_statements:
             stmt = handler(self, stmt)
 
-        # Apply `skiplimit` last: it may use a subquery.
+        # Apply pager last: it may use a subquery.
         # If this happens, no handler would know how to reference aliased columns properly
-        stmt = self.skiplimit_op.apply_to_statement(stmt)
+        stmt = self.pager_op.apply_to_statement(stmt)  # use only one pager
 
         # Done
         return stmt
@@ -362,8 +370,10 @@ class QueryExecutor:
     def _apply_operations_to_results(self, rows: list[SARowDict]) -> list[SARowDict]:
         """ Apply operations & handlers to the result set """
         # Apply operations
-        for op in [self.select_op, self.filter_op, self.sort_op, self.skiplimit_op]:
-            rows = op.apply_to_results(self, rows)
+        self.select_op.apply_to_results(self, rows)
+        self.filter_op.apply_to_results(self, rows)
+        self.sort_op.apply_to_results(self, rows)
+        self.pager_op.apply_to_results(self, rows)
 
         # Apply customization handlers
         for handler in self.customize_results:

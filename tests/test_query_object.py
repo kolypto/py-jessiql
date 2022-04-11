@@ -113,5 +113,5 @@ def test_query_object_rewrite():
     # this test is implemented in: test_integration_graphql.py
 
 
-def query_object(select=[], sort=[], filter={}, join={}, skip=None, limit=None) -> dict:
-    return {'select': select, 'sort': sort, 'filter': filter, 'join': join, 'skip': skip, 'limit': limit}
+def query_object(select=[], sort=[], filter={}, join={}, skip=None, limit=None, before=None, after=None) -> dict:
+    return {'select': select, 'sort': sort, 'filter': filter, 'join': join, 'skip': skip, 'limit': limit, 'before': before, 'after': after}

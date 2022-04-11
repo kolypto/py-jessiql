@@ -33,13 +33,21 @@ def query_object(*,
             title='Sorting order',
             description='List of columns with `+` or `-`. Example: `[ "login", "ctime-" ]`. JSON or YAML.',
         ),
-        skip: Optional[Union[int, str]] = fastapi.Query(
+        skip: Optional[int] = fastapi.Query(
             None,
-            title='Pagination. The number of items to skip. Or the pagination cursor.'
+            title='Pagination. The number of items to skip.'
         ),
         limit: Optional[int] = fastapi.Query(
             None,
             title='Pagination. The number of items to include.'
+        ),
+        before: Optional[str] = fastapi.Query(
+            None,
+            title='Pagination. A cursor to the previous page.',
+        ),
+        after: Optional[str] = fastapi.Query(
+            None,
+            title='Pagination. A cursor to the next page.'
         ),
 ) -> Optional[QueryObject]:
     """ Get the JessiQL Query Object from the request parameters
@@ -63,6 +71,8 @@ def query_object(*,
             sort=parse_serialized_argument('sort', sort),
             skip=skip,
             limit=limit,
+            before=before,
+            after=after,
         )
     except ArgumentValueError as e:
         raise exc.QueryObjectError(f'Query Object `{e.argument_name}` parsing failed: {e}') from e

@@ -4,11 +4,10 @@ from .engine import Query
 from .engine.settings import QuerySettings
 from .query_object import QueryObject, QueryObjectDict
 from .query_object import rewrite
+from .operations.pager import PageLinks
 
 from . import query_object
 from . import exc
-
-from .features.cursor import QueryPage, PageLinks
 
 from .sainfo.properties import loads_attributes, loads_attributes_readcode
 

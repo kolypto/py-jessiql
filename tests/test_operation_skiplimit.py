@@ -4,11 +4,12 @@ from sqlalchemy.dialects import postgresql as pg
 
 import jessiql
 from jessiql import QueryObjectDict
-from jessiql.features.cursor.cursors.encode import decode_opaque_cursor
 from jessiql.sainfo.version import SA_14
 from jessiql.testing.table_data import insert
 from jessiql.testing.recreate_tables import created_tables
 from jessiql.util import sacompat
+from jessiql.operations.pager.cursor_skip import SkipCursorData
+from jessiql.operations.pager.util import decode_opaque_cursor
 
 from .util.models import IdManyFieldsMixin, id_manyfields
 from .util.test_queries import typical_test_sql_query_text, typical_test_query_results, typical_test_query_text_and_results
@@ -19,9 +20,9 @@ from .util.test_queries import typical_test_sql_query_text, typical_test_query_r
     (dict(skip=None), []),
     (dict(limit=None), []),
     # Values: skip 1, limit 1, skip 1 limit 1
-    (dict(skip=1), ['LIMIT ALL OFFSET 1']),
-    (dict(limit=1), ['LIMIT 1']),
-    (dict(skip=1, limit=1), ['LIMIT 1 OFFSET 1']),
+    (dict(skip=1), ['LIMIT ALL OFFSET 0']),  # `skip` does not work without a `limit`:wa
+    (dict(limit=1), ['LIMIT 2']),  # LIMIT 1 + 1 extra row for cursor pagination
+    (dict(skip=1, limit=1), ['LIMIT 2 OFFSET 1']),
 ])
 def test_skiplimit_sql(connection: sa.engine.Connection, query_object: QueryObjectDict, expected_query_lines: list[str]):
     """ Typical test: what SQL is generated """
@@ -43,7 +44,7 @@ def test_skiplimit_sql(connection: sa.engine.Connection, query_object: QueryObje
     (dict(), [{'id': n} for n in (1, 2, 3)]),
     # skip 1, limit 1, skip 1 limit 1
     # use `sort` to make sure the ordering is predictable
-    (dict(sort=['id'], skip=1), [{'id': n} for n in (2, 3,)]),
+    (dict(sort=['id'], skip=1), [{'id': n} for n in (1, 2, 3,)]),
     (dict(sort=['id'], limit=1), [{'id': n} for n in (1,)]),
     (dict(sort=['id'], skip=1, limit=1), [{'id': n} for n in (2,)]),
 ])
@@ -142,8 +143,9 @@ def test_joined_skiplimit(connection: sa.engine.Connection, query_object: QueryO
 def test_skiplimit_cursor_pagination(connection: sa.engine.Connection):
     """ Test pagination with cursors """
     def main():
-        # ### Test: cannot get a link before results are fetched
-        q = jessiql.QueryPage(dict(limit=2), User)
+        # ### Test: wrong usage
+        # Test: cannot get a link before results are fetched
+        q = jessiql.Query(dict(limit=2), User)
 
         # Not possible to generate links before results are fetched
         with pytest.raises(RuntimeError):
@@ -153,7 +155,9 @@ def test_skiplimit_cursor_pagination(connection: sa.engine.Connection):
         q.fetchall(connection)
         q.page_links()  # no error
 
-        # ### Test: Page 0
+        # ### Test: skip/limit pages
+
+        # Test: Page 0
         # No prev page, have next page
         q, res = load(select=['id'], sort=['a'], limit=2)
 
@@ -161,86 +165,110 @@ def test_skiplimit_cursor_pagination(connection: sa.engine.Connection):
         assert decode_links(q.page_links()) == (None,
                                                 dict(skip=2, limit=2))
 
-        # ### Test: next page
+        # Test: next page
         # Have both prev & next pages
-        q, res = load(select=['id'], sort=['a'], skip=q.page_links().next)
+        q, res = load(select=['id'], sort=['a'], after=q.page_links().next)
 
         assert ids(res) == [3, 4]
         assert decode_links(q.page_links()) == (dict(skip=0, limit=2),
                                                 dict(skip=4, limit=2))
 
-        # ### Test: prev page
-        q, res = load(select=['id'], sort=['a'], skip=q.page_links().prev)
+        # Test: next page (last page)
+        q, res = load(select=['id'], sort=['a'], after=q.page_links().next)
+
+        assert ids(res) == [5]
+        assert decode_links(q.page_links()) == (dict(skip=2, limit=2),
+                                                None)
+
+        # Test: prev page
+        q, res = load(select=['id'], sort=['a'], before=q.page_links().prev)
+
+        assert ids(res) == [3, 4]
+        assert decode_links(q.page_links()) == (dict(skip=0, limit=2),
+                                                dict(skip=4, limit=2))
+
+
+        # Test: prev page (first)
+        q, res = load(select=['id'], sort=['a'], before=q.page_links().prev)
 
         assert ids(res) == [1, 2]
         assert decode_links(q.page_links()) == (None,
                                                 dict(skip=2, limit=2))
 
-
-        # ### Test: last page
+        # ### Test: approaching the end
         # Because this is the end, there should be no next page
 
         # Case 1. Got no rows => No next page.
-        q, res = load(select=['id'], sort=['a'], skip=5, limit=2)
+        cursor = SkipCursorData(5, 2).encode()
+        q, res = load(select=['id'], sort=['a'], after=cursor)
         assert ids(res) == []
         assert q.page_links().next is None
 
         # Case 2: Got one row, result set incomplete => No next page.
-        q, res = load(select=['id'], sort=['a'], skip=4, limit=2)
+        cursor = SkipCursorData(4, 2).encode()
+        q, res = load(select=['id'], sort=['a'], after=cursor)
         assert ids(res) == [5]
         assert q.page_links().next is None
 
         # Case 3: Got two rows, but there's nothing beyond that => No next page.
-        q, res = load(select=['id'], sort=['a'], skip=3, limit=2)
+        cursor = SkipCursorData(3, 2).encode()
+        q, res = load(select=['id'], sort=['a'], after=cursor)
         assert ids(res) == [4, 5]
         assert q.page_links().next is None
 
-        # Case 4. Get to the next page using cursors.
-        # It will keep loading the next page until there's nothing left
-        res = load_all_pages(select=['id'], sort=['a'], skip=0, limit=2)
-        assert list(map(ids, res)) == [[1, 2], [3, 4], [5]]
-
-        res = load_all_pages(select=['id'], sort=['a'], skip=1, limit=2)
-        assert list(map(ids, res)) == [[2, 3], [4, 5]]
-
-
         # ### Test: keyset
 
-        # Page 0
+        # Test: first page
         q, res = load(select=['id', 'a'], sort=['a', 'id'], limit=2)
 
         assert ids(res) == [1, 2]
         assert decode_links(q.page_links()) == (None,
-                                                dict(cols=['a', 'id'], skip=2, limit=2, op='>', val=['u-2-a', 2]))
+                                                dict(cols=['a', 'id'], limit=2, op='>', val=['u-2-a', 2]))
 
-        # Page 1
-        q, res = load(select=['id', 'a'], sort=['a', 'id'], skip=q.page_links().next)
+        # Test: next page
+        q, res = load(select=['id', 'a'], sort=['a', 'id'], after=q.page_links().next)
 
         assert ids(res) == [3, 4]
-        assert decode_links(q.page_links()) == (dict(cols=['a', 'id'], skip=0, limit=2, op='<', val=['u-3-a', 3]),
-                                                dict(cols=['a', 'id'], skip=4, limit=2, op='>', val=['u-4-a', 4]))
+        assert decode_links(q.page_links()) == (dict(cols=['a', 'id'], limit=2, op='<', val=['u-3-a', 3]),
+                                                dict(cols=['a', 'id'], limit=2, op='>', val=['u-4-a', 4]))
 
-        # Page 2
-        q, res = load(select=['id', 'a'], sort=['a', 'id'], skip=q.page_links().next)
+        # Test: next page
+        q, res = load(select=['id', 'a'], sort=['a', 'id'], after=q.page_links().next)
 
         assert ids(res) == [5]
-        assert decode_links(q.page_links()) == (dict(cols=['a', 'id'], skip=2, limit=2, op='<', val=['u-5-a', 5]),
+        assert decode_links(q.page_links()) == (dict(cols=['a', 'id'], limit=2, op='<', val=['u-5-a', 5]),
                                                 None)
 
+        # Test: prev page
+        q, res = load(select=['id', 'a'], sort=['a', 'id'], before=q.page_links().prev)
 
-        # ### Test: fall back to skip:N
+        # assert ids(res) == [3, 4]  # TODO: backward navigation does not work yet
+        # assert decode_links(q.page_links()) == (dict(cols=['a', 'id'], limit=2, op='<', val=['u-3-a', 3]),
+        #                                         dict(cols=['a', 'id'], limit=2, op='>', val=['u-4-a', 4]))
 
-        # Page 0
-        q, res = load(select=['id', 'a'], sort=['a', 'id'], limit=2, skip=0)
-        assert ids(res) == [1, 2]
-
-        # Page 1
-        q, res = load(select=['id', 'a'], sort=['a', 'id'], limit=2, skip=2)
-        assert ids(res) == [3, 4]
-
-        # Page 2
-        q, res = load(select=['id', 'a'], sort=['a', 'id'], limit=2, skip=4)
-        assert ids(res) == [5]
+        # ### Test: related pagination
+        q, res = load(
+            select=['id'],
+            join={
+                'articles': {
+                    'select': ['id'],
+                    'skip': 1,
+                    'limit': 1,
+                    'sort': ['id+'],
+                }
+            },
+            filter={'id': 1}
+        )
+        assert res == [
+            {
+                'id': 1,
+                'articles': [
+                    # {'user_id': 1, 'id': 1},
+                    {'user_id': 1, 'id': 2},
+                    # {'user_id': 1, 'id': 3},
+                ],
+            }
+        ]
 
 
 
@@ -250,10 +278,18 @@ def test_skiplimit_cursor_pagination(connection: sa.engine.Connection):
     class User(IdManyFieldsMixin, Base):
         __tablename__ = 'u'
 
+        articles = sa.orm.relationship('Article', back_populates='author')
+
+    class Article(IdManyFieldsMixin, Base):
+        __tablename__ = 'a'
+
+        user_id = sa.Column(sa.ForeignKey(User.id))
+        author = sa.orm.relationship(User, back_populates='articles')
+
     # Helpers
-    def load(**query_object) -> tuple[jessiql.QueryPage, list[dict]]:
+    def load(**query_object) -> tuple[jessiql.Query, list[dict]]:
         """ Given a Query Object, load results, return (Query, result) """
-        q = jessiql.QueryPage(query_object, User)
+        q = jessiql.Query(query_object, User)
         res = q.fetchall(connection)
         return q, res
 
@@ -261,30 +297,16 @@ def test_skiplimit_cursor_pagination(connection: sa.engine.Connection):
         """ Convert a list of dicts to ids """
         return [row['id'] for row in row_dicts]
 
-    def load_all_pages(**query_object):
-        """ Given a Query Object, keep loading the next page until there's nothing left to load """
-        for _ in range(100):  # safeguard
-            # Load the current page
-            q, res = load(**query_object)
-
-            # Yield: response
-            yield res
-
-            # If there is a next page, proceed
-            links = q.page_links()
-            if links.next:
-                query_object['skip'] = links.next
-            # If not, quit
-            else:
-                break
-        else:
-            raise RuntimeError('LOOP')
-
     # Data
     with created_tables(connection, Base):
         # Insert some rows
         insert(connection, User,
             *(id_manyfields('u', id) for id in range(1, 6))
+        )
+        insert(connection, Article,
+            id_manyfields('a', 1, user_id=1),
+            id_manyfields('a', 2, user_id=1),
+            id_manyfields('a', 3, user_id=1),
         )
 
         # Test

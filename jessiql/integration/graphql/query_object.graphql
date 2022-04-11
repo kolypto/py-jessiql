@@ -3,8 +3,10 @@ input QueryObjectInput {
     # select: gotten from the GraphQL tree itself
     filter: Object
     sort: [String!]
-    skip: ID
+    skip: Int
     limit: Int
+    before: ID
+    after: ID
 }
 
 """ JessiQL query object """
@@ -15,4 +17,6 @@ type QueryObject {
     sort: [String!]
     skip: Int
     limit: Int
+    before: String
+    after: String
 }

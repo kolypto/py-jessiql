@@ -57,7 +57,7 @@ def loads_attributes(*attribute_names: str, check: bool = True) -> abc.Callable[
         # Applied to a @property?
         if isinstance(fget, (property, sa.ext.hybrid.hybrid_property)):
             wrapper(fget.fget)
-            return fget
+            return fget  # type: ignore[return-value]
 
         # Check by reading the code
         if check:

@@ -37,6 +37,8 @@ class Rewriter:
             sort=self._rewrite_query_object_sort(query.sort),
             skip=query.skip,
             limit=query.limit,
+            before=query.before,
+            after=query.after,
         )
 
     def set_relation_rewriter(self, relation_name: str = None, rewriter: Rewriter = None):

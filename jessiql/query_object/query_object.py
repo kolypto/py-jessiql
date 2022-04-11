@@ -1,8 +1,10 @@
 """ JessiQL Query Object: the object you can query with """
 
 from __future__ import annotations
+from contextlib import AbstractAsyncContextManager
 
 from dataclasses import dataclass
+from re import A
 from typing import Optional, Union, TypedDict
 
 from jessiql import exc
@@ -15,8 +17,12 @@ class QueryObjectDict(TypedDict, total=False):
     join: Optional[dict]
     filter: Optional[dict]
     sort: Optional[list[str]]
-    skip: Optional[Union[int, str]]
+
+    # Pager
+    skip: Optional[int]
     limit: Optional[int]
+    before: Optional[str]
+    after: Optional[str]
 
 
 @dataclass
@@ -35,10 +41,14 @@ class QueryObject:
     select: SelectQuery
     filter: FilterQuery
     sort: SortQuery
+
+    # Pager
     skip: SkipQuery
     limit: LimitQuery
+    before: BeforeQuery
+    after: AfterQuery
 
-    __slots__ = 'select', 'filter', 'sort', 'skip', 'limit'
+    __slots__ = 'select', 'filter', 'sort', 'skip', 'limit', 'before', 'after'
 
     @classmethod
     def from_query_object(cls, query_object: QueryObjectDict):
@@ -58,12 +68,10 @@ class QueryObject:
             sort=SortQuery.from_query_object(
                 sort=query_object.get('sort') or [],
             ),
-            skip=SkipQuery.from_query_object(
-                skip=query_object.get('skip'),
-            ),
-            limit=LimitQuery.from_query_object(
-                limit=query_object.get('limit'),
-            ),
+            skip=SkipQuery.from_query_object(skip=query_object.get('skip')),
+            limit=LimitQuery.from_query_object(limit=query_object.get('limit')),
+            before=BeforeQuery.from_query_object(cursor=query_object.get('before')),
+            after=AfterQuery.from_query_object(cursor=query_object.get('after')),
         )
 
     @classmethod
@@ -95,6 +103,8 @@ class QueryObject:
             sort=self.sort.export(),
             skip=self.skip.export(),
             limit=self.limit.export(),
+            before=self.before.export(),
+            after=self.after.export(),
         )
 
 
@@ -102,6 +112,5 @@ class QueryObject:
 from .select import SelectQuery
 from .filter import FilterQuery
 from .sort import SortQuery
-from .skip import SkipQuery
-from .limit import LimitQuery
+from .pager import SkipQuery, LimitQuery, BeforeQuery, AfterQuery
 from . import resolve

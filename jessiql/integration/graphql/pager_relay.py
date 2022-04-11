@@ -6,7 +6,7 @@ import graphql
 from collections import abc
 from typing import Union, TypedDict, Optional
 
-from jessiql.features.cursor import QueryPage
+from jessiql import Query
 from .query_object import query_object_for, QueryObject
 
 
@@ -21,7 +21,7 @@ def relay_query_object_for(info: graphql.GraphQLResolveInfo, nested_path: abc.It
     return query_object
 
 
-def relay_query(query: QueryPage) -> ConnectionDict:
+def relay_query(query: Query) -> ConnectionDict:
     """ Get results in Relay paginated format """
     return {
         'edges': [],  # TODO: insert `query` results here. Provide `cursor` for the first and the last item

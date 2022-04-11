@@ -11,8 +11,7 @@ from .base import OperationInputBase
 from .select import SelectQuery, SelectedField, SelectedRelation
 from .sort import SortQuery, SortingField, SortingDirection
 from .filter import FilterQuery, FilterExpressionBase, FieldFilterExpression, BooleanFilterExpression
-from .skip import SkipQuery
-from .limit import LimitQuery
+from .pager import SkipQuery, LimitQuery, BeforeQuery, AfterQuery
 
 from . import rewrite
 from .resolve import (

@@ -9,13 +9,14 @@ from jessiql.query_object import QueryObject
 from jessiql.sautil.adapt import SimpleColumnsAdapter
 from jessiql.sainfo.version import SA_14
 
-from .base import Operation
-from .sort import get_sort_fields_with_direction
-from ..util.sacompat import add_columns
+from jessiql.operations.base import Operation
+from jessiql.operations.sort import get_sort_fields_with_direction
+from jessiql.util.sacompat import add_columns
 
 
 if TYPE_CHECKING:
     from jessiql.engine.settings import QuerySettings
+    from .page_links import PageLinks
 
 
 class SkipLimitOperation(Operation):
@@ -46,6 +47,9 @@ class SkipLimitOperation(Operation):
     # Enables pagination with a window function.
     # Value: list of foreign keys attributes to iterate against
     _window_over_foreign_keys: Optional[list[SAAttribute]]
+
+    def get_page_links(self) -> PageLinks:
+        raise NotImplementedError('Cursors are not supported for related objects')
 
     def paginate_over_foreign_keys(self, fk_columns: list[SAAttribute]):
         """ Enable pagination over foreign keys

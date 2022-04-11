@@ -15,6 +15,8 @@ EMPTY_QUERY_OBJECT = dict(
     filter={},
     skip=None,
     limit=None,
+    before=None,
+    after=None,
 )
 
 

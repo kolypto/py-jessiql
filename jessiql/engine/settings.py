@@ -51,9 +51,9 @@ class QuerySettings:
         if not limit:
             limit = self.default_limit
 
-        # Apply max limit
+        # Apply min limit
         if limit and self.max_limit:
-            limit = max(limit, self.max_limit)
+            limit = min(limit, self.max_limit)
 
         # Done
         return limit

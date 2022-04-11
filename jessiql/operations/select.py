@@ -9,12 +9,12 @@ import sqlalchemy.orm
 from jessiql.query_object import QueryObject, SelectQuery
 from jessiql.sainfo.columns import resolve_column_by_name
 from jessiql.sautil.adapt import LeftRelationshipColumnsAdapter
+from jessiql.sautil.properties import evaluate_property_on_dict
+from jessiql.util.sacompat import add_columns_if_missing
 from jessiql.typing import SAModelOrAlias
 from jessiql.sainfo.version import SA_13
 
 from .base import Operation
-from ..sautil.properties import evaluate_property_on_dict
-from ..util.sacompat import add_columns_if_missing
 
 if TYPE_CHECKING:
     from jessiql.engine.query_executor import QueryExecutor
