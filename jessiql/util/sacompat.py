@@ -43,3 +43,9 @@ def add_columns(stmt: sa.sql.Select, columns: abc.Iterable[Union[sa.Column, sa.s
         stmt = stmt.add_columns(*columns)
 
     return stmt
+
+try:
+    # SA 1.4
+    from sqlalchemy.engine import Row as SARow
+except ImportError:
+    from sqlalchemy.engine.result import RowProxy as SARow  # type: ignore[no-redef,attr-defined]

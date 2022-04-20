@@ -9,7 +9,7 @@ import sqlalchemy.orm.strategies
 
 from jessiql.sautil.adapt import SimpleColumnsAdapter
 from jessiql.typing import SAModelOrAlias, SARowDict
-from jessiql.util.sacompat import add_columns
+from jessiql.util.sacompat import add_columns, SARow
 from jessiql.sainfo.version import SA_13, SA_14
 
 
@@ -152,7 +152,13 @@ class JSelectInLoader:
     # Inspired by SelectInLoader._load_for_path(), part 2
     # [o] def _load_for_path(...)
     def prepare_query(self, q: sa.sql.Select) -> sa.sql.Select:
-        """ Prepare the statement for loading: add columns to select, add filter condition """
+        """ Prepare the statement for loading: add columns to select, add filter condition
+
+        Args:
+            q: SELECT statement prepared by QueryExecutor.statement().
+               It has no columns yet, but has a select_from(self.target_model), unaliased.
+               NOTE: we never alias the target model: the one we're loading. It would've made things too complicated.
+        """
         # Use SelectInLoader
         # self.query_info: primary key columns, the IN expression, etc
         # self._parent_alias: used with JOINed relationships where our table has to be joined to an alias of the parent table
@@ -180,9 +186,10 @@ class JSelectInLoader:
         # [o] q = Select._create_raw_select(
         # [o]     _raw_columns=[bundle_sql, entity_sql],
         # [o]     _label_style=LABEL_STYLE_TABLENAME_PLUS_COL,
-        if not query_info.load_with_join:  # [CUSTOMIZED]
-            q = add_columns(q, pk_cols)
-        else:  # [CUSTOMIZED]
+        # [CUSTOMIZED]
+        if not query_info.load_with_join:
+            q = add_columns(q, pk_cols)  # [CUSTOMIZED]
+        else:
             # NOTE: we cannot always add our FK columns: when `load_with_join` is used, these columns
             # may actually refer to columns from a M2M table with conflicting names!
             # Example:
@@ -203,12 +210,18 @@ class JSelectInLoader:
         # [o]     q = q.select_from(effective_entity)
         # [o] else:
         # [o]     q = q.select_from(self._parent_alias).join(...)
+        # [CUSTOMIZED]
         if not query_info.load_with_join:
             q = q.select_from(self.target_model)
         else:
-            q = q.select_from(parent_alias).join(
-                getattr(parent_alias, self.key).of_type(self.target_model)
-            )
+            if SA_13:
+                q = q.select_from(
+                    sa.orm.join(parent_alias, self.target_model, onclause=getattr(parent_alias, self.key).of_type(self.target_model))
+                )
+            else:
+                q = q.select_from(parent_alias).join(
+                    getattr(parent_alias, self.key).of_type(self.target_model)
+                )
 
         # [o] q = q.filter(in_expr.in_(sql.bindparam("primary_keys")))
         if SA_13:
@@ -373,7 +386,7 @@ def get_foreign_key_tuple(row: SARowDict, pk_cols: abc.Iterable[sa.Column], fk_l
         for col in pk_cols
     )
 
-def row_without_fk_columns(row: sa.engine.Row, fk_label_prefix: str) -> dict:
+def row_without_fk_columns(row: SARow, fk_label_prefix: str) -> dict:
     """ Get the row, drop qualified columns
 
     JSelectInLoader adds some service columns: these have a special name with a period: "table.column".

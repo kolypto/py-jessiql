@@ -1,3 +1,4 @@
+from tkinter import W
 import pytest
 import sqlalchemy as sa
 import sqlalchemy.ext.hybrid
@@ -271,7 +272,8 @@ def test_select_results(connection: sa.engine.Connection, query_object: QueryObj
         'FROM a AS a_1 '
         'JOIN at AS at_1 ON a_1.id = at_1.article_id '
         'JOIN t ON t.id = at_1.tag_id',
-        'WHERE a_1.id IN ([POSTCOMPILE_primary_keys])',
+        'WHERE a_1.id IN ([POSTCOMPILE_primary_keys])' if SA_14 else
+        'WHERE a_1.id IN ([EXPANDING_primary_keys])',
     ], [
         {
             'id': 1,
@@ -342,6 +344,7 @@ def test_joined_select(connection: sa.engine.Connection, model: str, query_objec
         id = sa.Column(sa.Integer, primary_key=True, nullable=False)
         article_id = sa.Column(Article.id.type, sa.ForeignKey(Article.id, ondelete='CASCADE'), nullable=False)
         tag_id = sa.Column(Tag.id.type, sa.ForeignKey(Tag.id, ondelete='CASCADE'), nullable=False)
+
 
 
     # Data
