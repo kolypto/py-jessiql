@@ -6,7 +6,7 @@ import sqlalchemy as sa
 from jessiql.sainfo.primary_key import primary_key_columns
 
 
-def insert(connection: sa.engine.Connection, Model: Union[sa.sql.Selectable, type], *values):
+def insert(connection: sa.engine.Connection, Model: Union[sa.sql.Selectable, type], *values: dict):
     """ Helper: run a query to insert many rows of Model into a table using low-level SQL statement
 
     Example:

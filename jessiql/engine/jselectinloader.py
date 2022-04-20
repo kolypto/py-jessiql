@@ -19,10 +19,8 @@ from jessiql.sainfo.version import SA_13, SA_14
 # https://github.com/sqlalchemy/sqlalchemy/compare/rel_1_4_23...rel_1_4_24
 # $ git diff rel_1_4_23..rel_1_4_24 -- lib/sqlalchemy/orm/strategies.py
 
-
 # Inspired by SelectInLoader._load_for_path()
 # With some differences;
-# * We ignore the `load_with_join` branch because we can ensure all FKs are loaded
 # * We do no streaming: all parent FKs are available at once, so we don't care about `order_by`s
 # * We don't use baked queries for now
 # * Some customizations are marked with [CUSTOMIZED]
@@ -61,15 +59,18 @@ class JSelectInLoader:
         self.key = relation_property.key
 
         # Use `SelectInLoader` to produce `query_info` for us. We'll reuse it.
-        # This object contains joining information
-        loader = sa.orm.strategies.SelectInLoader(relation_property, ())
-        self.query_info = loader._query_info
+        self.loader = sa.orm.strategies.SelectInLoader(relation_property, ())
+
+        # Prefix for columns that we add to the query
+        # Typically: "tablename.". Yes, with a period.
+        self.fk_label_prefix = ''
 
     __slots__ = (
         'source_model', 'target_model',
         'source_mapper', 'target_mapper',
         'relation_property', 'key',
-        'query_info',
+        'loader',
+        'fk_label_prefix',
         'our_states', 'none_states',
     )
 
@@ -85,28 +86,32 @@ class JSelectInLoader:
         Note that states haven't been provided to the constructor.
         This is the first time this class sees them.
         """
-        # Use `query_info` from SelectInLoader
-        query_info = self.query_info
+        # Use SelectInLoader
+        query_info = self.loader._query_info
 
-        # This value is set to `True` when either `relationship(omit_join=False)` was set, or when the left mapper entities
-        # do not have FK keys loaded. We do not want these complications since we control how things are loaded.
-        # SelectInLoader makes a larger JOIN query in such a case. We don't want that.
-        # [ADDED]
-        assert not query_info.load_with_join
+        # SelectInLoader will handle two cases:
+        # * If the select query contains the foreign key we need.
+        #   Example with User.articles:
+        #       SELECT id, author_id FROM articles
+        #   Then it will use `init_for_omit_join()`: this means that it does not have to add anything to the query.
+        # * If we cannot select everything we need from just one table (which is the case for M2M relationships),
+        #   SelectInLoader will use `init_for_join()` and produce a SELECT ... FROM ... JOIN.
 
-        # Okay, the `load_with_join` case is excluded.
-        # The next thing that controls how a query should be built is `query_info.load_only_child`:
-        # it's set to `True` for MANYTOONE relationships, and is `False` for other relationships: ONETOMANY and MANYTOMANY
+        # Controls how a query should be built is `query_info.load_only_child`:
+        # it's set to `True` for MANYTOONE relationships,
+        # and is `False` for other relationships: ONETOMANY and MANYTOMANY
         # [ADDED]
         assert isinstance(query_info.load_only_child, bool)
 
         # This is the case of MANYTOONE.
-        # This means that we have a list of entities where a foreign key is present within the result set.
-        # We need to collect these foreign key columns.
+        # We are handling a child relationship which has a parent -- mentioned via an FK.
+        # That is, we have a foreign key that refers to a parent.
         # Example:
         #   Article.users:
-        #       we have a list of `Article[]` where `Article.user_id` is loaded
+        #       we have a list of `Article[]` where `Article.user_id` is present within the result set.
         #       we'll need to load `User[]` where `User.id = Article.user_id`
+        # We need to collect these foreign key columns.
+        # [o] if query_info.load_only_child:
         if query_info.load_only_child:
             # [o] our_states = collections.defaultdict(list)
             self.our_states = collections.defaultdict(list)
@@ -129,12 +134,13 @@ class JSelectInLoader:
                     self.none_states.append(state_dict)
 
         # This is the case of ONETOMANY and MANYTOMANY.
-        # This means that we only have our primary key here, and the foreign key in in that other table.
-        # We need to collect our primary keys.
+        # We are handling an object that is referenced by a parent somewhere out there.
+        # That is, our primary key is mentioned by the parent entity.
         # Example:
         #   User.articles:
         #       we have a list of `User[]` where `User.id` is loaded
         #       we'll need to load `Article[]` where `Article.user_id = User.id`
+        # We need to collect our primary keys.
         # [o] if not query_info.load_only_child:
         if not query_info.load_only_child:
             # If it fails to find a column in `state`, it means the `state` does not have a primary key loaded
@@ -147,36 +153,76 @@ class JSelectInLoader:
     # [o] def _load_for_path(...)
     def prepare_query(self, q: sa.sql.Select) -> sa.sql.Select:
         """ Prepare the statement for loading: add columns to select, add filter condition """
+        # Use SelectInLoader
+        # self.query_info: primary key columns, the IN expression, etc
+        # self._parent_alias: used with JOINed relationships where our table has to be joined to an alias of the parent table
+        query_info = self.loader._query_info
+        parent_alias = self.loader._parent_alias if query_info.load_with_join else NotImplemented
+        effective_entity = self.target_model
+
         # [ADDED] Adapt pk_cols
         # [o] pk_cols = query_info.pk_cols
-        adapter = SimpleColumnsAdapter(self.target_model)
-        pk_cols = adapter.replace_many(self.query_info.pk_cols)
+        # [o] in_expr = query_info.in_expr
+        pk_cols = query_info.pk_cols
+        in_expr = query_info.in_expr
+
+        # [o] if not query_info.load_with_join:
+        if not query_info.load_with_join:
+            # [o] if effective_entity.is_aliased_class:
+            # [o]     pk_cols = [ effective_entity._adapt_element(col) for col in pk_cols ]
+            # [o]     in_expr = effective_entity._adapt_element(in_expr)
+            adapter = SimpleColumnsAdapter(self.target_model)
+            pk_cols = adapter.replace_many(pk_cols)
+            in_expr = adapter.replace(in_expr)
 
         # [o] bundle_ent = orm_util.Bundle("pk", *pk_cols)
-        # [o] bundle_sql = bundle_ent.__clause_element__()
+        # [o] entity_sql = effective_entity.__clause_element__()
         # [o] q = Select._create_raw_select(
-        # [o] _raw_columns=[bundle_sql, entity_sql],
-        q = add_columns(q, pk_cols)  # [CUSTOMIZED]
+        # [o]     _raw_columns=[bundle_sql, entity_sql],
+        # [o]     _label_style=LABEL_STYLE_TABLENAME_PLUS_COL,
+        if not query_info.load_with_join:  # [CUSTOMIZED]
+            q = add_columns(q, pk_cols)
+        else:  # [CUSTOMIZED]
+            # NOTE: we cannot always add our FK columns: when `load_with_join` is used, these columns
+            # may actually refer to columns from a M2M table with conflicting names!
+            # Example:
+            #   SELECT articles.id, tags.id
+            #   FROM articles JOIN ... JOIN tags
+            # So we have to rename them. We use "table.column" aliases because this horrible "." makes it clear
+            # it's not just another column
+            # label_prefix = self.source_model.__table__.name + '.'
+            self.fk_label_prefix = self.source_model.__tablename__ + '.'  # type: ignore[union-attr]
+            q = add_columns(q, [  # [CUSTOMIZED]
+                col.label(self.fk_label_prefix + col.key)
+                for col in pk_cols
+            ])
+
+        # Effective entity
+        # This is the class that we select from
+        # [o] if not query_info.load_with_join:
+        # [o]     q = q.select_from(effective_entity)
+        # [o] else:
+        # [o]     q = q.select_from(self._parent_alias).join(...)
+        if not query_info.load_with_join:
+            q = q.select_from(self.target_model)
+        else:
+            q = q.select_from(parent_alias).join(
+                getattr(parent_alias, self.key).of_type(self.target_model)
+            )
 
         # [o] q = q.filter(in_expr.in_(sql.bindparam("primary_keys")))
         if SA_13:
-            q = q.where(
-                adapter.replace(  # [ADDED] adapter
-                    self.query_info.in_expr.in_(sa.sql.bindparam("primary_keys", expanding=True))
-                )
-            )
+            q = q.where(in_expr.in_(sa.sql.bindparam("primary_keys", expanding=True)))
         else:
-            q = q.filter(
-                adapter.replace(  # [ADDED] adapter
-                    self.query_info.in_expr.in_(sa.sql.bindparam("primary_keys"))
-                )
-            )
+            q = q.filter(in_expr.in_(sa.sql.bindparam("primary_keys")))
 
         return q
 
     def fetch_results_and_populate_states(self, connection: sa.engine.Connection, q: sa.sql.Select) -> abc.Iterator[SARowDict]:
         """ Execute the query, fetch results, populate states """
-        if self.query_info.load_only_child:
+        query_info = self.loader._query_info
+
+        if query_info.load_only_child:
             yield from self._load_via_child(connection, self.our_states, self.none_states, q)  # type: ignore[arg-type]
         else:
             yield from self._load_via_parent(connection, self.our_states, q)  # type: ignore[arg-type]
@@ -184,11 +230,16 @@ class JSelectInLoader:
     # Chunk size: how many related objects to load at once with one SQL IN(...) query
     CHUNKSIZE = sa.orm.strategies.SelectInLoader._chunksize  # type: ignore[attr-defined]
 
+    # Used for: ONETOMANY and MANYTOMANY. That is, our primary key is mentioned by the parent entity.
     # Inspired by SelectInLoader._load_via_parent()
     # [o] def _load_via_parent(...):
     def _load_via_parent(self, connection: sa.engine.Connection, our_states: list[SARowDict], q: sa.sql.Select) -> abc.Iterator[SARowDict]:
-        # mypy says it might be `None`. We don't want weird relations.
+        # mypy says it might be `None`. We don't want undefined behavior. Configure your relationships first.
         assert self.relation_property.uselist is not None
+
+        # Use SelectInLoader
+        query_info = self.loader._query_info
+        label_prefix = f'' if query_info.load_with_join else ''
 
         # [o] uselist = self.uselist
         uselist: bool = self.relation_property.uselist
@@ -203,7 +254,7 @@ class JSelectInLoader:
 
             # [o]
             primary_keys = [
-                key[0] if self.query_info.zero_idx else key
+                key[0] if query_info.zero_idx else key
                 for key, state_dict in chunk
             ]
 
@@ -214,11 +265,11 @@ class JSelectInLoader:
                     # [o] q, params={"primary_keys": primary_keys}
                     # [CUSTOMIZED]
                     connection.execute(q, {"primary_keys": primary_keys}),
-                    lambda row: get_foreign_key_tuple(row, self.query_info),  # type: ignore[arg-type]
+                    lambda row: get_foreign_key_tuple(row, query_info.pk_cols, self.fk_label_prefix),  # type: ignore[arg-type]
             ):
                 # [o] data[k].extend(vv[1] for vv in v)
                 # [CUSTOMIZED] convert MappingResult to an actual, mutable dict() to which we'll add keys
-                data[k].extend(map(dict, v))
+                data[k].extend(row_without_fk_columns(row, self.fk_label_prefix) for row in v)
 
 
             # [o] for key, state, state_dict, overwrite in chunk:
@@ -243,11 +294,18 @@ class JSelectInLoader:
                 else:
                     yield collection  # type: ignore[misc]
 
+    # Used for: MANYTOONE. That is, we have a foreign key that refers to a parent.
     # Inspired by SelectInLoader._load_via_child()
     # [o] def _load_via_child(self, our_states, none_states, query_info, q, context):
     def _load_via_child(self, connection: sa.engine.Connection, our_states: dict[tuple, list], none_states: list[dict], q: sa.sql.Select) -> abc.Iterator[SARowDict]:
-        # mypy says it might be `None`. We don't want weird relations.
+        # mypy says it might be `None`. We don't want undefined behavior. Configure your relationships first.
         assert self.relation_property.uselist is not None
+
+        # Use SelectInLoader
+        query_info = self.loader._query_info
+
+        # we do not support relationships with JOIN here (because they have aliased column names)
+        assert not query_info.load_with_join
 
         # [o] uselist = self.uselist
         uselist: bool = self.relation_property.uselist
@@ -267,7 +325,7 @@ class JSelectInLoader:
                 get_primary_key_tuple(self.target_mapper, row): dict(row)  # type: ignore[arg-type]   # [CUSTOMIZED] Convert mappings into mutable dicts
                 # [o] for k, v in context.session.execute(
                 for row in connection.execute(q, {"primary_keys": [
-                    key[0] if self.query_info.zero_idx else key
+                    key[0] if query_info.zero_idx else key
                     for key in chunk
                 ]})
             }
@@ -303,11 +361,31 @@ def get_primary_key_tuple(mapper: sa.orm.Mapper, row: SARowDict) -> tuple:
     return tuple(row[col.key] for col in mapper.primary_key)
 
 
-def get_foreign_key_tuple(row: SARowDict, query_info: sa.orm.strategies.SelectInLoader.query_info) -> tuple:
+def get_foreign_key_tuple(row: SARowDict, pk_cols: abc.Iterable[sa.Column], fk_label_prefix: str) -> tuple:
     """ Get the foreign key tuple from a row dict
 
     Args:
         row: the dict to pluck from
         query_info: SqlALchemy SelectInLoader.query_info object that contains the necessary information
     """
-    return tuple(row[col.key] for col in query_info.pk_cols)
+    return tuple(
+        row[fk_label_prefix + col.key]  # type: ignore[operator]
+        for col in pk_cols
+    )
+
+def row_without_fk_columns(row: sa.engine.Row, fk_label_prefix: str) -> dict:
+    """ Get the row, drop qualified columns
+
+    JSelectInLoader adds some service columns: these have a special name with a period: "table.column".
+    We will remove such columns using prefix test
+    """
+    # No prefix? Nothing to strip. Convert the row to dict.
+    if fk_label_prefix == '':
+        return dict(row)
+    # Prefix? We need to drop some columns
+    else:
+        return {
+            k: v
+            for k, v in dict(row).items()
+            if not k.startswith(fk_label_prefix)
+        }

@@ -17,6 +17,7 @@ from .sainfo.properties import loads_attributes, loads_attributes_readcode
 # TODO: rename sub-fields!!!!! IMPORTANT!
 # TODO: custom handlers for filter values processing: need to rename some values (e.g. enums)
 # TODO: legacy & custom fields: query object to support fields that should be ignored
+# TODO: Cursor pagination: "prev" is probably not 100% functional
 
 # TODO: pluck JSON & JSONB attribute with dot-notation in 'select'?
 #   > { select: ["meta.id"] }

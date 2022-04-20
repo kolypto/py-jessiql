@@ -257,6 +257,36 @@ def test_select_results(connection: sa.engine.Connection, query_object: QueryObj
          okok.Whatever,
          okok.Whatever,
      ]),
+    # === Test: Many-to-Many
+    # Article.tags
+    ('Article', dict(select=[
+        'a',
+        {'tags': dict(select=['id', 'a'])}
+    ]), [
+        # Main
+        'SELECT a.a, a.id',
+        'FROM a',
+        # Join: zones
+        'SELECT a_1.id AS "a.id", t.id, t.a',
+        'FROM a AS a_1 '
+        'JOIN at AS at_1 ON a_1.id = at_1.article_id '
+        'JOIN t ON t.id = at_1.tag_id',
+        'WHERE a_1.id IN ([POSTCOMPILE_primary_keys])',
+    ], [
+        {
+            'id': 1,
+            'a': 'a-1-a',
+            'tags': [
+                {'id': 1, 'a': 't-1-a'},
+                {'id': 2, 'a': 't-2-a'},
+                {'id': 3, 'a': 't-3-a'},
+            ],
+        },
+        okok.Whatever,
+        okok.Whatever,
+        okok.Whatever,
+        okok.Whatever,
+    ])
 ])
 def test_joined_select(connection: sa.engine.Connection, model: str, query_object: QueryObjectDict, expected_query_lines: list[str], expected_results: list[dict]):
     """ Typical test: JOINs, SQL and results """
@@ -271,12 +301,17 @@ def test_joined_select(connection: sa.engine.Connection, model: str, query_objec
     #   Comment.article: Comment -> Article (Comment.article_id)
     #   Comment.author: Comment -> User (Comment.user_id)
     #   Article.author: Article -> User (Article.user_id)
+    # Many-to-Many:
+    #   Article.tags: Article -> (m2m) -> Tag
 
     class User(IdManyFieldsMixin, Base):
         __tablename__ = 'u'
 
         articles = sa.orm.relationship('Article', back_populates='author')
         comments = sa.orm.relationship('Comment', back_populates='author')
+
+    class Tag(IdManyFieldsMixin, Base):
+        __tablename__ = 't'
 
     class Article(IdManyFieldsMixin, Base):
         __tablename__ = 'a'
@@ -285,6 +320,7 @@ def test_joined_select(connection: sa.engine.Connection, model: str, query_objec
         author = sa.orm.relationship(User, back_populates='articles')
 
         comments = sa.orm.relationship('Comment', back_populates='article')
+        tags = sa.orm.relationship(Tag, secondary=lambda: ArticleTagLink.__table__, order_by=Tag.a, lazy='selectin')
 
         @property
         @loads_attributes_readcode()
@@ -299,6 +335,14 @@ def test_joined_select(connection: sa.engine.Connection, model: str, query_objec
 
         user_id = sa.Column(sa.ForeignKey(User.id))
         author = sa.orm.relationship(User, back_populates='comments')
+
+    class ArticleTagLink(Base):  # Many to Many
+        __tablename__ = 'at'
+
+        id = sa.Column(sa.Integer, primary_key=True, nullable=False)
+        article_id = sa.Column(Article.id.type, sa.ForeignKey(Article.id, ondelete='CASCADE'), nullable=False)
+        tag_id = sa.Column(Tag.id.type, sa.ForeignKey(Tag.id, ondelete='CASCADE'), nullable=False)
+
 
     # Data
     with created_tables(connection, Base):
@@ -333,11 +377,22 @@ def test_joined_select(connection: sa.engine.Connection, model: str, query_objec
             # this is a potential stumbling block for conditions that fail to filter it out
             id_manyfields('c', 6, user_id=None, article_id=None),
         )
+        insert(connection, Tag,
+            id_manyfields('t', 1),
+            id_manyfields('t', 2),
+            id_manyfields('t', 3),
+        )
+        insert(connection, ArticleTagLink,
+            # Article id=1: 3 tags
+            dict(id=1, article_id=1, tag_id=1),
+            dict(id=2, article_id=1, tag_id=2),
+            dict(id=3, article_id=1, tag_id=3),
+            # Article id=2: one tag
+            dict(id=4, article_id=2, tag_id=1),
+            # Article id=3: one tag
+            dict(id=5, article_id=3, tag_id=1),
+        )
 
         # Test
-        Model = {
-            'User': User,
-            'Article': Article,
-            'Comment': Comment,
-        }[model]
+        Model = locals()[model]
         typical_test_query_text_and_results(connection, query_object, Model, expected_query_lines, expected_results)
