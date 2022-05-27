@@ -9,7 +9,7 @@ from .rewrite import Rewriter
 from .rewrite_sa import RewriteSAModel
 
 # rules
-from .rename import Rename
+from .rename import Rename, KeepName
 from .transform import Transform
 from .skip import Skip, Ignore, Fail
 from .bool import Condition, ForFields
