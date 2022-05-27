@@ -35,8 +35,12 @@ class QuerySettings:
     relation_settings_getter: Optional[abc.Callable[[str], Optional[QuerySettings]]] = None
 
     def __post_init__(self):
+        # Associate this rewriter with a QuerySettings
         if self.rewriter:
+            # Make sure that it's 1-1 link. Why? Because every QuerySettings links to exactly one Rewriter, and they know one another.
             assert self.rewriter.settings is None, 'Sorry, you cannot associate the same rewriter with multiple QuerySettings. Make a copy().'
+
+            # Ok? associate.
             self.rewriter.settings = self
 
     # ### Callbacks for QueryExecutor

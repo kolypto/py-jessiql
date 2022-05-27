@@ -246,6 +246,7 @@ class QueryExecutor:
         res: sa.engine.CursorResult = connection.execute(stmt)
         return res.scalar()  # type: ignore[return-value]
 
+
     # Default settings object
     DEFAULT_SETTINGS = QuerySettings()
 

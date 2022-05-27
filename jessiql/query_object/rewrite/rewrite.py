@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from collections import abc
-from typing import Optional, Union, Any
+from typing import Optional, Union
 
 from jessiql.engine.settings import QuerySettings
 from jessiql.query_object import QueryObject
@@ -12,7 +12,7 @@ from .base import RewriterBase, evaluate_rules, FieldContext
 
 
 class Rewriter:
-    """ Rewrites a QueryObject from using API field names to DB fiels names """
+    """ Rewrites a QueryObject from using API field names to DB field names """
     # Rewrite rules
     rules: list[RewriterBase]
 
@@ -54,11 +54,19 @@ class Rewriter:
     # Callbacks
 
     def api_to_db(self, name: str, context: FieldContext) -> Optional[str]:
-        """ Callback: Convert API name to DB name """
+        """ Callback: Convert API name to DB name
+
+        Returns:
+            Field name, or `None` if the field should be skipped
+        """
         return evaluate_rules(self.rules, 'api_to_db', name, context)
 
     def db_to_api(self, name: str) -> Optional[str]:
-        """ Callback: convert DB name to API name """
+        """ Callback: convert DB name to API name
+
+        Returns:
+            Field name, or `None` if the field should be skipped
+        """
         return evaluate_rules(self.rules, 'db_to_api', name)
 
     def for_relation(self, relation_name: str) -> Optional[Rewriter]:

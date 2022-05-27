@@ -40,14 +40,15 @@ class Query(QueryExecutor):
         super().__init__(query, Model, settings=settings)
 
     @classmethod
-    def prepare(cls, Model: type):
+    def prepare(cls, Model: type, settings: QuerySettings = None):
         """ Prepare to make a Query against the provided model
 
         Example:
-            qUser = Query.prepare(models.User)
-            q = qUser(query_object)
+            user_settings = jessiql.QuerySettings(...)
+            query_user = Query.prepare(models.User, user_settings)
+            q = query_user(query_object)
         """
-        return partial(cls, Model=Model)
+        return partial(cls, Model=Model, settings=settings)
 
     def page_links(self) -> PageLinks:
         """ Get links to the previous and next page
