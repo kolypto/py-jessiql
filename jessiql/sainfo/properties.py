@@ -139,7 +139,9 @@ def get_all_model_properties(Model: type) -> dict[str, property]:
         attr = getattr(Model, name)
 
         # @property? Go for it.
-        properties[name] = attr
+        # NOTE: if we don't check for isinstance(property), we'll get `metadata` and more
+        if isinstance(attr, property):
+            properties[name] = attr
 
     # Done
     return properties
