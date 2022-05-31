@@ -16,6 +16,7 @@ graphql-core = {version = ">=3.0.0", optional = true}
 nox = ">=2020.8.22"
 pytest = ">=6.0.1"
 pytest-cov = ">=2.10.1"
+mypy = ">=0.910"
 psycopg2 = ">=2.8.6"
 pydantic = ">=1.6.0"
 fastapi = ">=0.51.0"
