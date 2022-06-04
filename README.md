@@ -6,3 +6,5 @@ Jessiql: JSON Query Language for SqlAlchemy Core
 
 Jessiql (pronounced: Jessi-cal) is a successor to [MongoSQL](https://github.com/kolypto/py-mongosql):
 a query engine that lets you query an SQL database using JSON syntax like this:
+
+The library is under development. The docs are underway.
