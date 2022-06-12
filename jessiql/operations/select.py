@@ -4,17 +4,14 @@ from collections import abc
 from typing import TYPE_CHECKING
 
 import sqlalchemy as sa
-import sqlalchemy.orm
 
-from jessiql.query_object import QueryObject, SelectQuery
-from jessiql.sainfo.columns import resolve_column_by_name
+from jessiql.query_object import SelectQuery
 from jessiql.sautil.adapt import LeftRelationshipColumnsAdapter
-from jessiql.sautil.properties import evaluate_property_on_dict
 from jessiql.util.sacompat import add_columns_if_missing
 from jessiql.typing import SAModelOrAlias
-from jessiql.sainfo.version import SA_13
 
 from .base import Operation
+
 
 if TYPE_CHECKING:
     from jessiql.engine.query_executor import QueryExecutor
@@ -58,51 +55,16 @@ class SelectOperation(Operation):
         """
         # Select columns from query.select
         # These are the columns that the user has requested
-        yield from select_fields(self.query.select, self.target_Model, where='select')
+        for field in self.query.select.fields.values():
+            yield from field.handler.select_columns(self.target_Model)
 
         # Add columns that relationships want using query.select
         # Note: duplicate columns will be removed automatically by the select() method
         yield from select_local_columns_for_relations(self.query.select, self.target_Model, where='select')
 
     def apply_to_results(self, query_executor: QueryExecutor, rows: list[dict]) -> list[dict]:
-        # Execute @property functions against the result
-        properties = [
-            field
-            for field in self.query.select.fields.values()
-            if field.is_property
-        ]
-
-        if properties:
-            # For every row, evaluate @property-ies against it
-            for row in rows:
-                for field in properties:
-                    # Assign new value
-                    row[field.name] = evaluate_property_on_dict(field.property, row)  # type: ignore[arg-type]
-
-        return rows
-
-
-def select_fields(select: SelectQuery, Model: SAModelOrAlias, *, where: str) -> abc.Iterator[sa.sql.ColumnElement]:
-    """ Get a list of columns that this QueryObject.select wants loaded
-
-    It resolves every column by name and adds it to the query.
-
-    Args:
-        select: QueryObject.select
-        Model: the model to resolve the fields against
-        where: location identifier for error reporting
-    """
-    # Go over every field
-    for field in select.fields.values():
-        if field.is_property:
-            # Resolve @property to columns using the information from @loads_attributes
-            yield from (
-                resolve_column_by_name(name, Model, where=where)
-                for name in field.property_loads  # type: ignore[union-attr]
-            )
-        else:
-            # Resolve it to a column
-            yield resolve_column_by_name(field.name, Model, where=where)
+        for field in self.query.select.fields.values():
+            rows = field.handler.apply_to_results(rows)
 
 
 def select_local_columns_for_relations(select: SelectQuery, Model: SAModelOrAlias, *, where: str):

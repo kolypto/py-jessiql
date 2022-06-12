@@ -1,10 +1,8 @@
 """ JessiQL Query Object: the object you can query with """
 
 from __future__ import annotations
-from contextlib import AbstractAsyncContextManager
 
 from dataclasses import dataclass
-from re import A
 from typing import Optional, Union, TypedDict
 
 from jessiql import exc
@@ -91,6 +89,7 @@ class QueryObject:
 
         Note that unless this is done, the data within this Query Object is incomplete.
         """
+        from . import resolve
         resolve.resolve_query_object(self, Model)
         return self
 
@@ -113,4 +112,3 @@ from .select import SelectQuery
 from .filter import FilterQuery
 from .sort import SortQuery
 from .pager import SkipQuery, LimitQuery, BeforeQuery, AfterQuery
-from . import resolve

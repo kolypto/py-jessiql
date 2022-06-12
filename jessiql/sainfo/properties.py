@@ -7,7 +7,6 @@ from collections import abc
 from typing import Optional, TypeVar
 
 import sqlalchemy as sa
-import sqlalchemy.orm
 import sqlalchemy.ext.hybrid
 
 from jessiql import exc
@@ -28,6 +27,19 @@ def resolve_property_by_name(field_name: str, Model: SAModelOrAlias, *, where: s
     # We only support properties annotated with @loads_attributes()
     if not is_annotated_with_loads(attribute):
         raise exc.InvalidColumnError(model_name(Model), field_name, where=where) from PropertyNotAnnotated(field_name)
+
+    # Done
+    return attribute
+
+
+def resolve_hybrid_property_by_name(field_name: str, Model: SAModelOrAlias, *, where: str) -> sa.ext.hybrid.hybrid_property:
+    try:
+        attribute = getattr(Model, field_name)
+    except AttributeError as e:
+        raise exc.InvalidColumnError(model_name(Model), field_name, where=where) from e
+
+    # Check that it actually is a hybrid property
+    # TODO
 
     # Done
     return attribute
@@ -112,7 +124,7 @@ class PropertyNotAnnotated(AttributeError):
 
 @lru_cache(typed=True)
 def get_all_model_properties(Model: type) -> dict[str, property]:
-    """ Get all model properties """
+    """ Get all model properties. Includes both plain properties and hybrid properties """
     mapper: sa.orm.Mapper = sa.orm.class_mapper(Model)
 
     # Find all attributes
@@ -148,8 +160,21 @@ def get_all_model_properties(Model: type) -> dict[str, property]:
 
 
 def is_property(Model: SAModelOrAlias, attribute_name: str) -> bool:
-    """ Is the provided value a @property? """
+    """ Is the provided value some sort of property (i.e. @property or a @hybrid_property)? """
     return attribute_name in get_all_model_properties(unaliased_class(Model))
+
+
+def is_plain_property(Model: SAModelOrAlias, attribute_name: str) -> bool:
+    """ Is the provided value a plain @property (i.e. not a @hybrid_property)? """
+    all_props = get_all_model_properties(unaliased_class(Model))
+    prop = all_props.get(attribute_name, None)
+    return isinstance(prop, property)
+
+def is_hybrid_property(Model: SAModelOrAlias, attribute_name: str) -> bool:
+    """ Is the provided value a hybrid property (i.e. not a plain @property)? """
+    all_props = get_all_model_properties(unaliased_class(Model))
+    prop = all_props.get(attribute_name, None)
+    return isinstance(prop, sa.ext.hybrid.hybrid_property)
 
 
 def func_uses_attributes(func: abc.Callable) -> abc.Iterator[str]:

@@ -4,10 +4,8 @@ from typing import Union
 import sqlalchemy as sa
 
 from .base import Operation
-from jessiql.sainfo.columns import resolve_column_by_name
 from jessiql.query_object import SortQuery, SortingDirection
-from jessiql.typing import SAModelOrAlias, SAAttribute
-from jessiql.util.expressions import json_field_subpath_as_text
+from jessiql.typing import SAModelOrAlias
 
 
 # TODO: expose a control that lets the user choose between NULLS FIRST and NULLS LAST?
@@ -52,15 +50,7 @@ def get_sort_fields_with_direction(sort: SortQuery, Model: SAModelOrAlias, *, wh
     """
     # Go over every field provided by the user
     for field in sort.fields:
-        expr: Union[SAAttribute, sa.sql.elements.BinaryExpression]
-
-        # Resolve its name
-        expr = resolve_column_by_name(field.name, Model, where=where)
-
-        # JSON path?
-        if field.sub_path:
-            assert field.is_json  # already verified by resolve_sorting_field()
-            expr = json_field_subpath_as_text(expr, field.sub_path)
+        expr = field.handler.refer_to(Model)
 
         # Make a sorting expression, depending on the direction
         if field.direction == SortingDirection.DESC:

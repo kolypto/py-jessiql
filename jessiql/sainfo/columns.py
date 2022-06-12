@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import Optional
+
 import sqlalchemy as sa
 from sqlalchemy import TypeDecorator
 from sqlalchemy.sql.elements import Label
@@ -26,6 +28,15 @@ except ImportError:
 from jessiql.sainfo.names import model_name
 from jessiql.typing import SAModelOrAlias, SAAttribute
 from jessiql import exc
+
+
+
+def get_column_by_name(field_name: str, Model: SAModelOrAlias) -> Optional[InstrumentedAttribute]:
+    """ Try to get an attribute by name """
+    try:
+        return getattr(Model, field_name)
+    except AttributeError:
+        return None
 
 
 def resolve_column_by_name(field_name: str, Model: SAModelOrAlias, *, where: str) -> InstrumentedAttribute:
@@ -76,6 +87,7 @@ def is_column_expression(attribute: SAAttribute):
 def is_composite_property(attribute: SAAttribute):
     return (
         isinstance(attribute, QueryableAttribute) and
+        hasattr(attribute, 'property') and  # otherwise: exceptions on hybrid properties (they do not have this "property")
         isinstance(attribute.property, CompositeProperty)
     )
 

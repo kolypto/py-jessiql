@@ -14,7 +14,3 @@ from .filter import FilterQuery, FilterExpressionBase, FieldFilterExpression, Bo
 from .pager import SkipQuery, LimitQuery, BeforeQuery, AfterQuery
 
 from . import rewrite
-from .resolve import (
-    resolve_input,
-    resolve_input_element,
-)

@@ -6,18 +6,18 @@ from dataclasses import dataclass
 from enum import Enum
 
 from functools import cached_property
-from typing import Union, Optional
-
-import sqlalchemy as sa
-import sqlalchemy.orm
+from typing import Optional, Union, TYPE_CHECKING
 
 from jessiql import exc
 from jessiql.sainfo.names import field_name
 from jessiql.typing import SAAttribute
-from jessiql.util.dataclasses import dataclass_notset
 from jessiql.util.expressions import parse_dot_notation
 
 from .base import OperationInputBase
+
+
+if TYPE_CHECKING:
+    from jessiql.operations.fields import FieldHandlerBase
 
 
 @dataclass
@@ -76,33 +76,24 @@ class SortQuery(OperationInputBase):
             name = field
             direction = SortingDirection.ASC
 
-        # Dot-notation?
-        name, sub_path = parse_dot_notation(name)
-
         # Construct
-        return SortingField(name=name, direction=direction, sub_path=sub_path)  # type: ignore[call-arg]
+        name, sub_path = parse_dot_notation(name)
+        return SortingField(name=name, sub_path=sub_path, direction=direction, handler=None)
 
 
-@dataclass_notset('property', 'is_json')
 @dataclass
 class SortingField:
     name: str
-    direction: SortingDirection
-
-    # Parsed dot-notation: "field.sub.sub"
-    # Applicable to JSON fields
     sub_path: Optional[tuple[str, ...]]
+    direction: SortingDirection
+    handler: FieldHandlerBase
 
-    # Populated when resolved by resolve_sorting_field()
-    property: sa.orm.ColumnProperty
-    is_json: bool
-
-    __slots__ = 'name', 'direction', 'sub_path', 'property', 'is_json'
+    __slots__ = 'name', 'sub_path', 'direction', 'handler'
 
     def export(self) -> str:
-        return f'{self._field_expression()}{self.direction.value}'
+        return f'{self._export_field_expression()}{self.direction.value}'
 
-    def _field_expression(self):
+    def _export_field_expression(self):
         if not self.sub_path:
             return self.name
         else:

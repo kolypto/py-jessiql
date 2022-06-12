@@ -65,8 +65,7 @@ def test_select_sql(connection: sa.engine.Connection, query_object: QueryObjectD
     ]),
     # Select @hybrid_property
     (dict(select=['abch']), [
-        {'a': 'm-1-a', 'b': 'm-1-b', 'c': 'm-1-c',
-         'abch': 'm-1-a m-1-b m-1-c',  # generated value
+        {'abch': 'm-1-a m-1-b m-1-c',  # selected directly as a column
          },
     ]),
 ])
@@ -84,13 +83,13 @@ def test_select_results(connection: sa.engine.Connection, query_object: QueryObj
             return ' '.join((self.a, self.b, self.c))
 
         @sa.ext.hybrid.hybrid_property
-        @loads_attributes_readcode()
         def abch(self):
-            return ' '.join((self.a, self.b, self.c))
+            # dict-evaluation is not used: instead, it's selected as an expression
+            raise NotImplementedError
 
         @abch.expression
         def abch(cls):
-            raise NotImplementedError  # we don't care in this test
+            return cls.a + ' ' + cls.b + ' ' + cls.c
 
     # Data
     with created_tables(connection, Base):

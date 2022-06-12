@@ -9,12 +9,9 @@ import sqlalchemy.dialects.postgresql as pg  # TODO: FIXME: hardcoded dependency
 
 from .base import Operation
 
-from jessiql.query_object.filter import FilterExpressionBase, FieldFilterExpression, BooleanFilterExpression
 from jessiql import exc
-from jessiql.sainfo.columns import resolve_column_by_name
-from jessiql.typing import SAModelOrAlias, SAAttribute
+from jessiql.query_object.filter import FilterExpressionBase, FieldFilterExpression, BooleanFilterExpression
 from jessiql.sainfo.version import SA_13
-from jessiql.util.expressions import json_field_subpath_as_text
 
 
 class FilterOperation(Operation):
@@ -70,19 +67,19 @@ class FilterOperation(Operation):
             field operator value
         """
         # Resolve column
-        condition.property = get_field_for_filtering(condition, self.target_Model, where='filter')
-        col, val = condition.property, condition.value
+        col = condition.handler.refer_to(self.target_Model)
+        val = condition.value
 
         # Step 1. Prepare the column and the operand.
 
         # Case 1. Both column and value are arrays
-        if condition.is_array and _is_array(val):
+        if condition.handler.is_array and _is_array(val):
             # Cast the value to ARRAY[] with the same type that the column has
             # Only in this case Postgres will be able to handle them both
             val = sa.cast(pg.array(val), pg.ARRAY(col.type.item_type))
 
         # Case 2. JSON column
-        if condition.is_json:
+        if condition.handler.is_json:
             # With Postgres, we first extract the value as a string (`->>` operator)
             # and then cast it to the same type as the operand. It works:
             #   SELECT CAST(jsonb '{"a": "val"}'->>'a' AS VARCHAR) = "val";
@@ -162,7 +159,7 @@ class FilterOperation(Operation):
         self._validate_operator_argument(condition)
 
         # Get the callable for the operator
-        operator_lambda = self._get_operator_lambda(condition.operator, use_array=condition.is_array)
+        operator_lambda = self._get_operator_lambda(condition.operator, use_array=condition.handler.is_array)
 
         # Apply the operator
         return operator_lambda(
@@ -270,22 +267,6 @@ class FilterOperation(Operation):
         cls.ARRAY_OPERATORS[name] = callable
 
     # endregion
-
-
-def get_field_for_filtering(condition: FieldFilterExpression, Model: SAModelOrAlias, *, where: str):
-    expr: Union[SAAttribute, sa.sql.elements.BinaryExpression]
-
-    expr = resolve_column_by_name(condition.field, Model, where=where)
-
-    # JSON path?
-    if condition.sub_path:
-        assert condition.is_json  # already verified by resolve_filtering_field_expression()
-
-        # Get the path
-        expr = json_field_subpath_as_text(expr, condition.sub_path)
-
-    # Done
-    return expr
 
 
 def _is_array(value):

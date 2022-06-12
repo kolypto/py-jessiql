@@ -1,4 +1,5 @@
 from __future__ import annotations
+from cgitb import handler
 
 import operator
 from dataclasses import dataclass
@@ -7,6 +8,7 @@ from typing import Optional, NamedTuple, TYPE_CHECKING
 import sqlalchemy as sa
 
 from jessiql import exc
+from jessiql.query_object.sort import SortingField
 from jessiql.sainfo.version import SA_14
 from jessiql.typing import SARowDict, SAModelOrAlias
 from jessiql.query_object import QueryObject, SortingDirection
@@ -18,6 +20,7 @@ from jessiql.sainfo.columns import (
 from .page_links import PageLinks
 from .util import encode_opaque_cursor, decode_opaque_cursor
 from .cursor_base import CursorImplementation
+from .. import fields
 
 
 if TYPE_CHECKING:
@@ -83,7 +86,7 @@ class KeysetCursor(CursorImplementation):
 
         # The final sort field is a non-nullable unique key
         final_field = query.sort.fields[-1]
-        if not is_column_property_unique(final_field.property) or is_column_property_nullable(final_field.property):
+        if not _sorted_by_unique_notnull(final_field):
             debug and print(f'Keyset n/a: final sort field {final_field.name=} is not UNIQUE NOT NULL')
             return False
 
@@ -254,3 +257,14 @@ class KeysetPageInfo:
 
     # Do we have any next page?
     has_next_page: bool
+
+
+def _sorted_by_unique_notnull(field: SortingField) -> bool:
+    """ Check that the sorting field `field` is a UNIQUE NOT NULL field """
+    # Currently, the only expression that can provide a UNIQUE NOT NULL sorting is a ColumnHandler expression.
+    # If a handler is implemented that's capable of supplying a UNIQUE NOT NULL result set, it must be mentioned here.
+    return (
+        isinstance(field.handler, fields.ColumnHandler) and
+        is_column_property_unique(field.handler.property) and
+        not is_column_property_nullable(field.handler.property)
+    )

@@ -6,18 +6,21 @@ from collections import abc
 from dataclasses import dataclass
 
 from functools import cached_property
-from typing import Union, Optional
+from typing import Union, TYPE_CHECKING
 
 import sqlalchemy as sa
-import sqlalchemy.orm
 
 from jessiql import exc
-from jessiql.typing import SAAttribute, saproperty
+from jessiql.typing import SAAttribute
 from jessiql.sainfo.names import field_name
 from jessiql.util.dataclasses import dataclass_notset
 from jessiql.util.funcy import collecting
 
 from .base import OperationInputBase
+
+
+if TYPE_CHECKING:
+    from jessiql.operations.fields import FieldHandlerBase
 
 
 @dataclass
@@ -78,7 +81,7 @@ class SelectQuery(OperationInputBase):
         for field in (*select, join):
             # str: 'field_name'
             if isinstance(field, str):
-                fields.append(SelectedField(name=field))  # type: ignore[call-arg]
+                fields.append(SelectedField(name=field, handler=None))
             # dict: {'field_name': QueryObject}
             elif isinstance(field, dict):
                 relations.extend(
@@ -111,19 +114,12 @@ class SelectQuery(OperationInputBase):
         }
 
 
-@dataclass_notset('property', 'is_array', 'is_json', 'is_property', 'property_loads')
 @dataclass
 class SelectedField:
     name: str
+    handler: FieldHandlerBase
 
-    # Populated when resolved by resolve_selected_field()
-    property: Union[sa.orm.ColumnProperty, saproperty]
-    is_array: bool
-    is_json: bool
-    is_property: bool
-    property_loads: Optional[abc.Sequence[str]]
-
-    __slots__ = 'name', 'property', 'is_array', 'is_json', 'is_property', 'property_loads'
+    __slots__ = 'name', 'handler'
 
     def export(self) -> str:
         return self.name
