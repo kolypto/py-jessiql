@@ -7,11 +7,11 @@ import sqlalchemy as sa
 from jessiql import sainfo
 from jessiql.sautil.properties import evaluate_property_on_dict
 from jessiql.typing import SAModelOrAlias, saproperty
-from .base import NameContext, FieldHandlerBase
+from .base import NameContext, FieldHandlerBase, Selectable
 
 
 @dataclass
-class PropertyHandler(FieldHandlerBase):
+class PropertyHandler(FieldHandlerBase, Selectable):
     """ Hanlder for @property fields
 
     Notes:

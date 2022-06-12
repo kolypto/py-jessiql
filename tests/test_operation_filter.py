@@ -1,5 +1,6 @@
 import pytest
 import sqlalchemy as sa
+import sqlalchemy.ext.hybrid
 from sqlalchemy.dialects import postgresql as pg
 
 from jessiql import QueryObjectDict
@@ -53,6 +54,11 @@ from .util.test_queries import typical_test_sql_query_text, typical_test_query_r
     (dict(filter={'j.user.name': 10}), ["WHERE CAST((a.j #>> ('user', 'name')) AS INTEGER) = 10"]),
     (dict(filter={'j.user.name': True}), ["WHERE CAST((a.j #>> ('user', 'name')) AS BOOLEAN) = true"]),
     (dict(filter={'j.user.name': None}), ["WHERE CAST((a.j #>> ('user', 'name')) AS TEXT) IS NULL"]),
+    # Hybrid Property
+    (dict(filter={'awow': {'$exists': 1}}), ["WHERE a.a || ! IS NOT NULL"]),
+    (dict(filter={'awow': 'a!'}), ["WHERE a.a || ! = a!"]),
+    # Filter a relationship
+    # (dict(filter={'related.a': True}), ["zzz"]),  # TODO: not yet implemented
 ])
 def test_filter_sql(connection: sa.engine.Connection, query_object: QueryObjectDict, expected_query_lines: list[str]):
     """ Typical test: what SQL is generated """
@@ -64,6 +70,22 @@ def test_filter_sql(connection: sa.engine.Connection, query_object: QueryObjectD
 
         # This Postgres-specific implementation has .contains() and .overlaps() implementations
         tags = sa.Column(pg.ARRAY(sa.String))
+
+        # A hybrid property can be used in expressions as well
+        @sa.ext.hybrid.hybrid_property
+        def awow(self): pass
+
+        @awow.expression
+        def awow(cls):
+            return cls.a + '!'
+
+        related = sa.orm.relationship('Related', back_populates='parent')
+
+    class Related(IdManyFieldsMixin, Base):
+        __tablename__ = 'r'
+
+        parent_id = sa.Column(sa.ForeignKey(Model.id))
+        parent = sa.orm.relationship(Model, back_populates='related')
 
     # Test
     typical_test_sql_query_text(query_object, Model, expected_query_lines)

@@ -21,6 +21,8 @@ from .util.test_queries import typical_test_sql_query_text, typical_test_query_r
     (dict(sort=['a', 'b+', 'c-']), 'ORDER BY a.a ASC, a.b ASC, a.c DESC'),
     # Sort: JSON
     (dict(sort=['j.user.id']), "ORDER BY j #>> ('user', 'id') ASC"),  # TODO: (tag:postgres-only) this is a PostgreSQL-specific expression
+    # Sort: hybrid property
+    (dict(sort=['awow']), "ORDER BY a.a || ! ASC NULLS LAST"),
 ])
 def test_sort_sql(connection: sa.engine.Connection, query_object: QueryObjectDict, expected_query_lines: list[str]):
     """ Typical test: what SQL is generated """
@@ -29,6 +31,14 @@ def test_sort_sql(connection: sa.engine.Connection, query_object: QueryObjectDic
 
     class Model(IdManyFieldsMixin, Base):
         __tablename__ = 'a'
+
+        # A hybrid property can be used in expressions as well
+        @sa.ext.hybrid.hybrid_property
+        def awow(self): pass
+
+        @awow.expression
+        def awow(cls):
+            return cls.a + '!'
 
     # Test
     typical_test_sql_query_text(query_object, Model, expected_query_lines)

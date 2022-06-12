@@ -6,11 +6,11 @@ import sqlalchemy as sa
 from jessiql import exc, sainfo
 from jessiql.typing import SAModelOrAlias
 from jessiql.util.expressions import json_field_subpath_as_text
-from .base import NameContext, FieldHandlerBase
+from .base import NameContext, FieldHandlerBase, Selectable, Filterable, Sortable
 
 
 @dataclass
-class ColumnHandler(FieldHandlerBase):
+class ColumnHandler(FieldHandlerBase, Selectable, Filterable, Sortable):
     """ Handler for columns, column expressions, composite properties """
     @classmethod
     def is_applicable(cls, name: str, sub_path: Optional[tuple[str, ...]], Model: SAModelOrAlias, context: NameContext) -> bool:
@@ -32,6 +32,7 @@ class ColumnHandler(FieldHandlerBase):
 
     # Field name
     name: str
+
     # Dot-notation path, optional
     sub_path: Optional[tuple[str, ...]]
 
@@ -43,7 +44,7 @@ class ColumnHandler(FieldHandlerBase):
     is_array: bool
 
     # Property info: is it a JSON column?
-    # Used by: self.refer_to()
+    # Used by: operation/filter
     is_json: bool
 
     def __init__(self, name: str, sub_path: Optional[tuple[str, ...]], Model: SAModelOrAlias, context: NameContext):

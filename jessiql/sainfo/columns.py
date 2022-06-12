@@ -33,10 +33,7 @@ from jessiql import exc
 
 def get_column_by_name(field_name: str, Model: SAModelOrAlias) -> Optional[InstrumentedAttribute]:
     """ Try to get an attribute by name """
-    try:
-        return getattr(Model, field_name)
-    except AttributeError:
-        return None
+    return getattr(Model, field_name, None)
 
 
 def resolve_column_by_name(field_name: str, Model: SAModelOrAlias, *, where: str) -> InstrumentedAttribute:

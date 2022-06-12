@@ -1,4 +1,3 @@
-
 from typing import Optional
 from collections import abc
 from dataclasses import dataclass
@@ -8,11 +7,11 @@ import sqlalchemy.ext.hybrid
 
 from jessiql import sainfo, exc
 from jessiql.typing import SAModelOrAlias
-from .base import NameContext, FieldHandlerBase
+from .base import NameContext, FieldHandlerBase, Selectable, Filterable, Sortable
 
 
 @dataclass
-class HybridPropertyHandler(FieldHandlerBase):
+class HybridPropertyHandler(FieldHandlerBase, Selectable, Filterable, Sortable):
     """ Handler for @hybrid_property fields.
 
     Unlike PropertyHandler, it will produce a fair SQL expression to handle the field properly inside the database.
@@ -33,6 +32,14 @@ class HybridPropertyHandler(FieldHandlerBase):
     # The property attribute
     property: sa.ext.hybrid.hybrid_property
 
+    # Property info: is it an array?
+    # Used by: operation/filter
+    is_array: bool
+
+    # Property info: is it a JSON column?
+    # Used by: operation/filter
+    is_json: bool
+
     def __init__(self, name: str, sub_path: Optional[tuple[str, ...]], Model: SAModelOrAlias, context: NameContext):
         Model = sainfo.models.unaliased_class(Model)
 
@@ -40,10 +47,13 @@ class HybridPropertyHandler(FieldHandlerBase):
         self.name = name
         self.property = sainfo.properties.resolve_hybrid_property_by_name(name, Model, where=context.value)
 
+        self.is_array = False  # TODO: override with a type annotation and allow array hybrid properties?
+        self.is_json = False  # TODO: override with a type annotation and allow json hybrid properties with dot-notation?
+
         if sub_path is not None:
             raise exc.QueryObjectError(f'Field "{self.name}" does not support dot-notation yet: is a dynamic expression, not JSON')
 
-    __slots__ = 'context', 'name', 'property'
+    __slots__ = 'context', 'name', 'property', 'is_array', 'is_json'
 
     def select_columns(self, Model: SAModelOrAlias) -> abc.Iterator[sa.sql.ColumnElement]:
         yield self.refer_to(Model)

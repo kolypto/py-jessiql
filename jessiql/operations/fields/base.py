@@ -44,3 +44,20 @@ class FieldHandlerBase:
     def apply_to_results(self, rows: list[dict]) -> list[dict]:
         """ Make adjustments to the result set in order to represent the field correctly """
         return rows
+
+
+@dataclass
+class Selectable:
+    """ Mixin for fields that are selectable """
+
+
+@dataclass
+class Filterable:
+    """ Mixin for fields that are filterable """
+    is_array: bool
+    is_json: bool
+
+
+@dataclass
+class Sortable:
+    """ Mixin for fields that are sortable """

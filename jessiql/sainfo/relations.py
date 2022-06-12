@@ -1,4 +1,5 @@
 from __future__ import annotations
+from typing import Optional
 
 from sqlalchemy.orm import RelationshipProperty
 from sqlalchemy.orm.attributes import InstrumentedAttribute
@@ -27,12 +28,17 @@ def resolve_relation_by_name(field_name: str, Model: SAModelOrAlias, *, where: s
     except AttributeError as e:
         raise exc.InvalidRelationError(model_name(Model), field_name, where=where) from e
 
-    # Check that it actually is a column
+    # Check that it actually is a relationship
     if not is_relation(attribute):
         raise exc.InvalidColumnError(model_name(Model), field_name, where=where)
 
     # Done
     return attribute
+
+
+def get_relation_by_name(field_name: str, Model: SAModelOrAlias) -> Optional[InstrumentedAttribute]:
+    return getattr(Model, field_name, None)
+
 
 
 # region: Relation Attribute types
