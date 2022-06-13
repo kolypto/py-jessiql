@@ -1,8 +1,9 @@
 """ Query: executes Query Objects against an SqlAlchemy Model class """
 
 from __future__ import annotations
+
 from functools import partial
-from typing import Union, TYPE_CHECKING
+from typing import Optional, Union, TYPE_CHECKING
 
 from jessiql.query_object import QueryObject, QueryObjectDict
 from .query_executor import QueryExecutor, QuerySettings
@@ -49,6 +50,29 @@ class Query(QueryExecutor):
             q = query_user(query_object)
         """
         return partial(cls, Model=Model, settings=settings)
+
+    @property
+    def query_level(self) -> int:
+        """ Get the "level" of this query
+
+        Level 0: the root query
+        Level 1: query that loads related objects
+        Level 2: query that loads related objects of the next level
+        """
+        # First level: (Model,)
+        # Second level: (Model, relation name, relationship property)
+        return (len(self.load_path) - 1) // 2
+
+    @property
+    def limit(self) -> Optional[int]:
+        """ Get the final LIMIT set on the query
+
+        It may be changed because of:
+        1. User query
+        2. Default limit
+        3. Max limit
+        """
+        return self.pager_op.limit
 
     def page_links(self) -> PageLinks:
         """ Get links to the previous and next page

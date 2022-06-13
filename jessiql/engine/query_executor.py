@@ -290,29 +290,6 @@ class QueryExecutor:
             # Results are discarded here because `executor.loader` has inserted them into `states` by now
             results = executor.fetchall(connection)
 
-    @property
-    def query_level(self) -> int:
-        """ Get the "level" of this query
-
-        Level 0: the root query
-        Level 1: query that loads related objects
-        Level 2: query that loads related objects of the next level
-        """
-        # First level: (Model,)
-        # Second level: (Model, relation name, relationship property)
-        return (len(self.load_path) - 1) // 2
-
-    @property
-    def limit(self) -> Optional[int]:
-        """ Get the final LIMIT set on the query
-
-        It may be changed because of:
-        1. User query
-        2. Default limit
-        3. Max limit
-        """
-        return self.pager_op.limit
-
     def statement(self) -> sa.sql.Select:
         """ Build an SQL SELECT statement for the current Model.
 
@@ -396,8 +373,3 @@ CustomizeStatementCallable = abc.Callable[[QueryExecutor, sa.sql.Select], sa.sql
 
 # A callable that
 CustomizeResultsCallable = abc.Callable[[QueryExecutor, list[SARowDict]], list[SARowDict]]
-
-
-def reference_and_extend(source: list, extend: list) -> list:
-    source.extend(extend)
-    return source
