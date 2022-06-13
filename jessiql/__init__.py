@@ -15,8 +15,6 @@ from .sainfo.properties import loads_attributes, loads_attributes_readcode
 # TODO: README.md
 
 # TODO: legacy & custom fields: query object to support fields that should be ignored
-# TODO: filter by related objects
-#   > { filter: { "user.articles.id": 10 } }
 
 # TODO: relationship configuration: limited queries & depth
 # TODO: rename sub-fields!!!!! IMPORTANT!
