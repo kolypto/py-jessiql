@@ -102,13 +102,11 @@ class RelationHandler(Filterable, Sortable):
         related_field = getattr(related_model, self.sub_path[0])
 
         # Build a subquery
-        stmt = sa.select(related_field).select_from(related_model)
+        stmt = sa.select([related_field]).select_from(related_model)
         if SA_13:
-            stmt = stmt.where(relation)
+            return stmt.where(relation).limit(1).as_scalar()
         else:
-            stmt = stmt.filter(relation)
-        stmt = stmt.limit(1)  # scalar subquery must return exactly one result
-        return stmt.scalar_subquery().correlate(Model)
+            return stmt.filter(relation).limit(1).scalar_subquery().correlate(Model)
 
 
 def _follow_subpath_to_the_final_attribute(attr: InstrumentedAttribute, sub_path: abc.Sequence[str], *, where: str) -> InstrumentedAttribute:
