@@ -12,7 +12,7 @@ from functools import singledispatch
 
 from jessiql import sainfo
 from jessiql.typing import SAModelOrAlias
-from jessiql.operations.fields import NameContext, choose_field_handler_or_fail
+from jessiql.operations import fields
 
 from .query_object import QueryObject
 from .select import SelectQuery, SelectedField, SelectedRelation
@@ -61,7 +61,7 @@ def resolve_select(select: SelectQuery, Model: SAModelOrAlias):
 
 @resolve.register
 def resolve_selected_field(field: SelectedField, Model: SAModelOrAlias):
-    field.handler = choose_field_handler_or_fail(field.name, None, Model, NameContext.SELECT)
+    field.handler = fields.choose_selectable_handler_or_fail(field.name, None, Model)
 
 
 @resolve.register
@@ -84,14 +84,14 @@ def resolve_sort(sort: SortQuery, Model: SAModelOrAlias):
 
 @resolve.register
 def resolve_sorting_field(field: SortingField, Model: SAModelOrAlias):
-    field.handler = choose_field_handler_or_fail(field.name, field.sub_path, Model, NameContext.SORT)
+    field.handler = fields.choose_sortable_handler_or_fail(field.name, field.sub_path, Model)
 
 
 @resolve.register
 def resolve_filter(filter: FilterQuery, Model: SAModelOrAlias):
     # Resolve every filtering condition
     for condition in filter.conditions:
-        condition.handler = choose_field_handler_or_fail(condition.field, condition.sub_path, Model, NameContext.FILTER)
+        resolve(condition, Model)
 
 
 @resolve.register
@@ -104,5 +104,4 @@ def resolve_filtering_boolean_expression(expression: BooleanFilterExpression, Mo
 
 @resolve.register
 def resolve_filtering_field_expression(expression: FieldFilterExpression, Model: SAModelOrAlias):
-    expression.handler = choose_field_handler_or_fail(expression.field, expression.sub_path, Model, NameContext.FILTER)
-
+    expression.handler = fields.choose_filterable_handler_or_fail(expression.field, expression.sub_path, Model)

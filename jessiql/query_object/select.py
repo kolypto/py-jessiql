@@ -20,7 +20,7 @@ from .base import OperationInputBase
 
 
 if TYPE_CHECKING:
-    from jessiql.operations.fields import FieldHandlerBase
+    from jessiql.operations.fields import Selectable
 
 
 @dataclass
@@ -81,7 +81,7 @@ class SelectQuery(OperationInputBase):
         for field in (*select, join):
             # str: 'field_name'
             if isinstance(field, str):
-                fields.append(SelectedField(name=field, handler=None))
+                fields.append(SelectedField(name=field, handler=None))  # type: ignore[arg-type]
             # dict: {'field_name': QueryObject}
             elif isinstance(field, dict):
                 relations.extend(
@@ -117,7 +117,7 @@ class SelectQuery(OperationInputBase):
 @dataclass
 class SelectedField:
     name: str
-    handler: FieldHandlerBase
+    handler: Selectable  # Is set after resolve() is called
 
     __slots__ = 'name', 'handler'
 

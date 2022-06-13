@@ -10,7 +10,7 @@ from .base import NameContext, FieldHandlerBase, Selectable, Filterable, Sortabl
 
 
 @dataclass
-class ColumnHandler(FieldHandlerBase, Selectable, Filterable, Sortable):
+class ColumnHandler(Selectable, Filterable, Sortable):
     """ Handler for columns, column expressions, composite properties """
     @classmethod
     def is_applicable(cls, name: str, sub_path: Optional[tuple[str, ...]], Model: SAModelOrAlias, context: NameContext) -> bool:
@@ -64,13 +64,20 @@ class ColumnHandler(FieldHandlerBase, Selectable, Filterable, Sortable):
 
     def select_columns(self, Model: SAModelOrAlias) -> abc.Iterator[sa.sql.ColumnElement]:
         assert self.sub_path is None
-        yield self.refer_to(Model)
+        yield self._refer_to(Model)
 
-    def refer_to(self, Model: SAModelOrAlias) -> sa.sql.ColumnElement:
+    def filter_by(self, Model: SAModelOrAlias) -> sa.sql.ColumnElement:
+        return self._refer_to(Model)
+
+    def sort_by(self, Model: SAModelOrAlias) -> sa.sql.ColumnElement:
+        return self._refer_to(Model)
+
+    def _refer_to(self, Model: SAModelOrAlias) -> sa.sql.ColumnElement:
         expr = sainfo.columns.resolve_column_by_name(self.name, Model, where=self.context.value)
 
         if self.sub_path:
             assert self.is_json
-            expr = json_field_subpath_as_text(expr, self.sub_path)
+            expr = json_field_subpath_as_text(expr, self.sub_path)  # type: ignore[assignment]
 
         return expr
+

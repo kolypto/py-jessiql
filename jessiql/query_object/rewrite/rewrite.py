@@ -117,7 +117,7 @@ def _rename_select_fields(fields: abc.Iterable[SelectedField], rewriter: Rewrite
         if new_name:
             yield SelectedField(  # type: ignore[call-arg]
                 name=new_name,
-                handler=None,
+                handler=None,  # type: ignore[arg-type]
             )
 
 def _rename_select_relations(relations: abc.Iterable[SelectedRelation], rewriter: Rewriter) -> abc.Iterator[SelectedRelation]:
@@ -138,7 +138,7 @@ def _rename_sort_fields(fields: abc.Iterable[SortingField], rewriter: Rewriter) 
                 name=new_name,
                 direction=field.direction,
                 sub_path=field.sub_path,  # TODO: sub-path renames
-                handler=None,
+                handler=None,  # type: ignore[arg-type]
             )
 
 def _rename_filter_conditions(conditions: abc.Iterable[FilterExpressionBase], rewriter: Rewriter) -> abc.Iterator[FilterExpressionBase]:
@@ -156,7 +156,7 @@ def _rename_filter_conditions(conditions: abc.Iterable[FilterExpressionBase], re
                     operator=condition.operator,
                     value=condition.value,
                     sub_path=condition.sub_path,  # TODO: sub-path renames
-                    handler=None,
+                    handler=None,  # type: ignore[arg-type]
                 )
         else:
             raise NotImplementedError

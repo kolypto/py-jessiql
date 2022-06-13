@@ -17,7 +17,7 @@ from .base import OperationInputBase
 
 
 if TYPE_CHECKING:
-    from jessiql.operations.fields import FieldHandlerBase
+    from jessiql.operations.fields import Sortable
 
 
 @dataclass
@@ -78,7 +78,7 @@ class SortQuery(OperationInputBase):
 
         # Construct
         name, sub_path = parse_dot_notation(name)
-        return SortingField(name=name, sub_path=sub_path, direction=direction, handler=None)
+        return SortingField(name=name, sub_path=sub_path, direction=direction, handler=None)  # type: ignore[arg-type]
 
 
 @dataclass
@@ -86,7 +86,7 @@ class SortingField:
     name: str
     sub_path: Optional[tuple[str, ...]]
     direction: SortingDirection
-    handler: FieldHandlerBase
+    handler: Sortable  # Is set after resolve() is called
 
     __slots__ = 'name', 'sub_path', 'direction', 'handler'
 

@@ -50,7 +50,7 @@ def get_sort_fields_with_direction(sort: SortQuery, Model: SAModelOrAlias, *, wh
     """
     # Go over every field provided by the user
     for field in sort.fields:
-        expr = field.handler.refer_to(Model)
+        expr = field.handler.sort_by(Model)
 
         # Make a sorting expression, depending on the direction
         if field.direction == SortingDirection.DESC:

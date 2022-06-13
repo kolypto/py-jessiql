@@ -11,7 +11,7 @@ from .base import NameContext, FieldHandlerBase, Selectable
 
 
 @dataclass
-class PropertyHandler(FieldHandlerBase, Selectable):
+class PropertyHandler(Selectable):
     """ Hanlder for @property fields
 
     Notes:
@@ -55,12 +55,12 @@ class PropertyHandler(FieldHandlerBase, Selectable):
         # Resolve property.
         # Will rase an exception if it's not annotated properly
         Model = sainfo.models.unaliased_class(Model)
-        prop = sainfo.properties.resolve_property_by_name(name, Model, where=context.value)
+        prop = sainfo.properties.resolve_property_by_name(name, Model, where=context.value)  # will fail is the property is not annotated
 
         self.context = context
         self.name = name
         self.property = prop
-        self.loads_attrs = sainfo.properties.get_property_loads_attribute_names(prop)
+        self.loads_attrs = sainfo.properties.get_property_loads_attribute_names(prop)  # type: ignore[assignment]
 
     __slots__ = 'context', 'name', 'property', 'loads_attrs'
 

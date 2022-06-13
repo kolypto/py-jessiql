@@ -65,6 +65,7 @@ class SelectOperation(Operation):
     def apply_to_results(self, query_executor: QueryExecutor, rows: list[dict]) -> list[dict]:
         for field in self.query.select.fields.values():
             rows = field.handler.apply_to_results(rows)
+        return rows
 
 
 def select_local_columns_for_relations(select: SelectQuery, Model: SAModelOrAlias, *, where: str):

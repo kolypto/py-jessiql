@@ -67,7 +67,7 @@ class FilterOperation(Operation):
             field operator value
         """
         # Resolve column
-        col = condition.handler.refer_to(self.target_Model)
+        col = condition.handler.filter_by(self.target_Model)
         val = condition.value
 
         # Step 1. Prepare the column and the operand.
@@ -95,11 +95,15 @@ class FilterOperation(Operation):
             col = sa.cast(col, coerce_type)  # type: ignore[type-var, assignment]
 
         # Step 2. Apply the operator.
-        return self.use_operator(
+        filter_expr = self.use_operator(
             condition,
             col,  # type: ignore[arg-type]  # column expression
             val,  # value expression
         )
+
+        # Step 3. Give the handler a chance
+        filter_expr = condition.handler.filter_with(self.target_Model, filter_expr)
+        return filter_expr
 
     def _compile_boolean_conditions(self, condition: BooleanFilterExpression) -> sa.sql.ColumnElement:
         """ Generate an SQL statement for a boolean expression: e.g. "x AND y AND z"

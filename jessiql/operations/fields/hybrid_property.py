@@ -11,7 +11,7 @@ from .base import NameContext, FieldHandlerBase, Selectable, Filterable, Sortabl
 
 
 @dataclass
-class HybridPropertyHandler(FieldHandlerBase, Selectable, Filterable, Sortable):
+class HybridPropertyHandler(Selectable, Filterable, Sortable):
     """ Handler for @hybrid_property fields.
 
     Unlike PropertyHandler, it will produce a fair SQL expression to handle the field properly inside the database.
@@ -56,8 +56,15 @@ class HybridPropertyHandler(FieldHandlerBase, Selectable, Filterable, Sortable):
     __slots__ = 'context', 'name', 'property', 'is_array', 'is_json'
 
     def select_columns(self, Model: SAModelOrAlias) -> abc.Iterator[sa.sql.ColumnElement]:
-        yield self.refer_to(Model)
+        yield self._refer_to(Model)
 
-    def refer_to(self, Model: SAModelOrAlias) -> abc.Iterable[sa.sql.ColumnElement]:
+    def filter_by(self, Model: SAModelOrAlias) -> sa.sql.ColumnElement:
+        return self._refer_to(Model)
+
+    def sort_by(self, Model: SAModelOrAlias) -> sa.sql.ColumnElement:
+        return self._refer_to(Model)
+
+    def _refer_to(self, Model: SAModelOrAlias) -> sa.sql.ColumnElement:
+        prop = sainfo.properties.resolve_hybrid_property_by_name(self.name, Model, where=self.context.value)
         # NOTE: in SqlAlchemy 1.3 a hybrid_property, when selected, gets name "anon_1". In 1.4, it gets a proper name automatically, but we still add a label() just to make sure
-        return sainfo.properties.resolve_hybrid_property_by_name(self.name, Model, where=self.context.value).label(self.name)
+        return prop.label(self.name)  # type: ignore[attr-defined]

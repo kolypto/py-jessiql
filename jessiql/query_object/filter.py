@@ -16,7 +16,7 @@ from .base import OperationInputBase
 
 
 if TYPE_CHECKING:
-    from jessiql.operations.fields import FieldHandlerBase
+    from jessiql.operations.fields import Filterable
 
 @dataclass
 class FilterQuery(OperationInputBase):
@@ -63,11 +63,11 @@ class FilterQuery(OperationInputBase):
 
         # If the value is not a dict, it's a shortcut: { key: value }
         if not isinstance(value, dict):
-            yield FieldFilterExpression(field=name, sub_path=sub_path, operator='$eq', value=value, handler=None)
+            yield FieldFilterExpression(field=name, sub_path=sub_path, operator='$eq', value=value, handler=None)  # type: ignore[arg-type]
         # If the value is a dict, every item will be an operator and an operand
         else:
             for operator, operand in value.items():
-                yield FieldFilterExpression(field=name, sub_path=sub_path, operator=operator, value=operand, handler=None)
+                yield FieldFilterExpression(field=name, sub_path=sub_path, operator=operator, value=operand, handler=None)  # type: ignore[arg-type]
 
     @classmethod
     def _parse_input_boolean_expression(cls, operator: str, conditions: Union[dict, list[dict]]):
@@ -111,7 +111,7 @@ class FieldFilterExpression(FilterExpressionBase):
     sub_path: Optional[tuple[str, ...]]
     operator: str
     value: Any
-    handler: FieldHandlerBase
+    handler: Filterable  # Is set after resolve() is called
 
     __slots__ = 'field', 'sub_path', 'operator', 'value', 'handler'
 

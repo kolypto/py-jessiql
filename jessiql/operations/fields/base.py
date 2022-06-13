@@ -10,7 +10,6 @@ from jessiql.typing import SAModelOrAlias
 class NameContext(Enum):
     """ The context in which a field is used """
     SELECT = 'select'
-    JOIN = 'join'
     FILTER = 'filter'
     SORT = 'sort'
 
@@ -33,12 +32,12 @@ class FieldHandlerBase:
 
     __slots__ = ()
 
+
+class Selectable(FieldHandlerBase):
+    """ Mixin for fields that are selectable """
+
     def select_columns(self, Model: SAModelOrAlias) -> abc.Iterator[sa.sql.ColumnElement]:
         """ Get columns to add to the select statement (select operation) """
-        raise NotImplementedError
-
-    def refer_to(self, Model: SAModelOrAlias) -> sa.sql.ColumnElement:
-        """ Get an expression that's used to refer to this field in expressions (sort and filter) """
         raise NotImplementedError
 
     def apply_to_results(self, rows: list[dict]) -> list[dict]:
@@ -46,18 +45,23 @@ class FieldHandlerBase:
         return rows
 
 
-@dataclass
-class Selectable:
-    """ Mixin for fields that are selectable """
-
-
-@dataclass
-class Filterable:
+class Filterable(FieldHandlerBase):
     """ Mixin for fields that are filterable """
     is_array: bool
     is_json: bool
 
+    def filter_by(self, Model: SAModelOrAlias) -> sa.sql.ColumnElement:
+        """ Get an expression that's used to refer to this field while sorting """
+        raise NotImplementedError
 
-@dataclass
-class Sortable:
+    def filter_with(self, Model: SAModelOrAlias, expr: sa.sql.ColumnElement) -> sa.sql.ColumnElement:
+        """ Fine-tune the final filter expression: e.g. wrap it into something """
+        return expr
+
+
+class Sortable(FieldHandlerBase):
     """ Mixin for fields that are sortable """
+
+    def sort_by(self, Model: SAModelOrAlias) -> sa.sql.ColumnElement:
+        """ Get an expression that's used to refer to this field while sorting """
+        raise NotImplementedError
