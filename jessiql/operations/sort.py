@@ -37,10 +37,10 @@ class SortOperation(Operation):
 
     def compile_columns(self) -> abc.Iterator[sa.sql.ColumnElement]:
         """ Generate the list of columns, sorted asc()/desc(), to be used in the query """
-        yield from get_sort_fields_with_direction(self.query.sort, self.target_Model, where='sort')
+        yield from get_sort_fields_with_direction(self.query.sort, self.target_Model)
 
 
-def get_sort_fields_with_direction(sort: SortQuery, Model: SAModelOrAlias, *, where: str) -> abc.Iterator[sa.sql.ColumnElement]:
+def get_sort_fields_with_direction(sort: SortQuery, Model: SAModelOrAlias) -> abc.Iterator[sa.sql.ColumnElement]:
     """ Get the list of expressions to sort by
 
     Args:

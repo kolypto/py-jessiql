@@ -9,6 +9,7 @@ from sqlalchemy.orm.attributes import InstrumentedAttribute
 
 from jessiql import sainfo, exc
 from jessiql.typing import SAModelOrAlias
+from jessiql.util.sacompat import SA_13
 from .base import NameContext, Filterable, Sortable
 
 
@@ -90,8 +91,24 @@ class RelationHandler(Filterable, Sortable):
         return _build_related_condition(Model, (self.name, *self.sub_path), where=self.context.value, final_expr=expr)
 
     def sort_by(self, Model: SAModelOrAlias) -> sa.sql.ColumnElement:
-        # TODO: implement sorting by related column: SELECT DISTINCT ON (pk) + JOIN. sort_by() must be able to modify the statement
-        raise NotImplementedError
+        # We need to fit an expression into an ORDER BY.
+        # We'll use a correlated subquery: it's easiest, but its performance sucks.
+        # TODO: Better way to sort by related field? Ideally, we should replace it with a JOIN, but then we face row multiplication problems.
+        assert len(self.sub_path) == 1, "Sorting by a related field: only one level deep is supported due to performance considerations"
+
+        # Get related model, field
+        relation = sainfo.relations.resolve_relation_by_name(self.name, Model, where=self.context.value)
+        related_model = relation.mapper.class_
+        related_field = getattr(related_model, self.sub_path[0])
+
+        # Build a subquery
+        stmt = sa.select(related_field).select_from(related_model)
+        if SA_13:
+            stmt = stmt.where(relation)
+        else:
+            stmt = stmt.filter(relation)
+        stmt = stmt.limit(1)  # scalar subquery must return exactly one result
+        return stmt.scalar_subquery().correlate(Model)
 
 
 def _follow_subpath_to_the_final_attribute(attr: InstrumentedAttribute, sub_path: abc.Sequence[str], *, where: str) -> InstrumentedAttribute:

@@ -19,6 +19,7 @@ def typical_test_sql_query_text(query_object: QueryObjectDict, Model: type, expe
     q = Query(query_object, Model)
 
     # SQL
+    assert isinstance(expected_query_lines, list)  # otherwise it will get broken into characters!
     assert assert_statement_lines(q.statement(), *expected_query_lines)
 
 
@@ -28,6 +29,7 @@ def typical_test_sql_selected_columns(query_object: QueryObjectDict, Model: type
     q = Query(query_object, Model)
 
     # SQL
+    assert isinstance(expected_columns, list)  # otherwise it will get broken into characters!
     assert assert_selected_columns(q.statement(), *expected_columns)
 
 

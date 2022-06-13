@@ -120,7 +120,7 @@ class SkipLimitOperation(Operation):
                 # We have to apply the same ordering from the outside query;
                 # otherwise, the numbering will be undetermined
                 order_by=adapter.replace_many(
-                    get_sort_fields_with_direction(self.query.sort, self.target_Model, where='limit')
+                    get_sort_fields_with_direction(self.query.sort, self.target_Model)
                 )  # type: ignore[arg-type]
             )
             # give it a name that we can use later

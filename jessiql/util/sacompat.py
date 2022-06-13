@@ -44,6 +44,7 @@ def add_columns(stmt: sa.sql.Select, columns: abc.Iterable[Union[sa.Column, sa.s
 
     return stmt
 
+
 try:
     # SA 1.4
     from sqlalchemy.engine import Row as SARow

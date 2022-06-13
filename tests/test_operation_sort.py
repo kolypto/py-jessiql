@@ -14,18 +14,17 @@ from .util.test_queries import typical_test_sql_query_text, typical_test_query_r
     # Empty
     (dict(sort=None), ['SELECT a.id', 'FROM a']),
     # Sort ASC, sort DESC
-    (dict(sort=['a']), 'ORDER BY a.a ASC'),
-    (dict(sort=['a+']), 'ORDER BY a.a ASC'),
-    (dict(sort=['a-']), 'ORDER BY a.a DESC'),
+    (dict(sort=['a']), ['ORDER BY a.a ASC']),
+    (dict(sort=['a+']), ['ORDER BY a.a ASC']),
+    (dict(sort=['a-']), ['ORDER BY a.a DESC']),
     # Sort: many fields
-    (dict(sort=['a', 'b+', 'c-']), 'ORDER BY a.a ASC, a.b ASC, a.c DESC'),
+    (dict(sort=['a', 'b+', 'c-']), ["ORDER BY a.a ASC NULLS LAST, a.b ASC NULLS LAST, a.c DESC NULLS LAST"]),
     # Sort: JSON
-    (dict(sort=['j.user.id']), "ORDER BY j #>> ('user', 'id') ASC"),  # TODO: (tag:postgres-only) this is a PostgreSQL-specific expression
+    (dict(sort=['j.user.id']), ["ORDER BY a.j #>> ('user', 'id') ASC"]),  # TODO: (tag:postgres-only) th]is is a PostgreSQL-specific expression
     # Sort: hybrid property
-    (dict(sort=['awow']), "ORDER BY a.a || ! ASC NULLS LAST"),
+    (dict(sort=['awow']), ["ORDER BY a.a || ! ASC NULLS LAST"]),
     # Sort: related column
-    # (dict(sort=["related.a"]), "Z"),
-    # (dict(sort=["related.parent.a"]), "Z"),
+    (dict(sort=["related.a"]), ["SELECT a.id", "FROM a", "ORDER BY (SELECT r.a", "FROM r", "WHERE a.id = r.parent_id", "LIMIT 1) ASC NULLS LAST"]),
 ])
 def test_sort_sql(connection: sa.engine.Connection, query_object: QueryObjectDict, expected_query_lines: list[str]):
     """ Typical test: what SQL is generated """
