@@ -371,10 +371,10 @@ class QueryExecutor:
     def _apply_operations_to_results(self, rows: list[SARowDict]) -> list[SARowDict]:
         """ Apply operations & handlers to the result set """
         # Apply operations
-        self.select_op.apply_to_results(self, rows)
-        self.filter_op.apply_to_results(self, rows)
-        self.sort_op.apply_to_results(self, rows)
-        self.pager_op.apply_to_results(self, rows)
+        rows = self.select_op.apply_to_results(self, rows)
+        rows = self.filter_op.apply_to_results(self, rows)
+        rows = self.sort_op.apply_to_results(self, rows)
+        rows = self.pager_op.apply_to_results(self, rows)
 
         # Apply customization handlers
         for handler in self.customize_results:

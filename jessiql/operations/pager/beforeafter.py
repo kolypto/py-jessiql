@@ -109,7 +109,8 @@ class BeforeAfterOperation(Operation):
         return self.cursor_impl.apply_to_statement(self.query, self.target_Model, stmt)
 
     def apply_to_results(self, query_executor: QueryExecutor, rows: list[dict]) -> list[dict]:
-        return self.cursor_impl.inspect_data_rows(query_executor, rows)
+        self.cursor_impl.inspect_data_rows(query_executor, rows)
+        return rows
 
 
 
