@@ -23,6 +23,9 @@ from .util.test_queries import typical_test_sql_query_text, typical_test_query_r
     (dict(sort=['j.user.id']), "ORDER BY j #>> ('user', 'id') ASC"),  # TODO: (tag:postgres-only) this is a PostgreSQL-specific expression
     # Sort: hybrid property
     (dict(sort=['awow']), "ORDER BY a.a || ! ASC NULLS LAST"),
+    # Sort: related column
+    # (dict(sort=["related.a"]), "Z"),
+    # (dict(sort=["related.parent.a"]), "Z"),
 ])
 def test_sort_sql(connection: sa.engine.Connection, query_object: QueryObjectDict, expected_query_lines: list[str]):
     """ Typical test: what SQL is generated """
@@ -39,6 +42,14 @@ def test_sort_sql(connection: sa.engine.Connection, query_object: QueryObjectDic
         @awow.expression
         def awow(cls):
             return cls.a + '!'
+
+        related = sa.orm.relationship('Related', back_populates='parent')
+
+    class Related(IdManyFieldsMixin, Base):
+        __tablename__ = 'r'
+
+        parent_id = sa.Column(sa.ForeignKey(Model.id))
+        parent = sa.orm.relationship(Model, back_populates='related')
 
     # Test
     typical_test_sql_query_text(query_object, Model, expected_query_lines)

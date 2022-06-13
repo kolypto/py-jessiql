@@ -6,7 +6,7 @@ import sqlalchemy as sa
 from jessiql import exc, sainfo
 from jessiql.typing import SAModelOrAlias
 from jessiql.util.expressions import json_field_subpath_as_text
-from .base import NameContext, FieldHandlerBase, Selectable, Filterable, Sortable
+from .base import NameContext, Selectable, Filterable, Sortable
 
 
 @dataclass

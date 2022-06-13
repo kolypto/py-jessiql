@@ -7,7 +7,7 @@ import sqlalchemy.ext.hybrid
 
 from jessiql import sainfo, exc
 from jessiql.typing import SAModelOrAlias
-from .base import NameContext, FieldHandlerBase, Selectable, Filterable, Sortable
+from .base import NameContext, Selectable, Filterable, Sortable
 
 
 @dataclass

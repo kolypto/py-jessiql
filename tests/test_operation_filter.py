@@ -58,7 +58,8 @@ from .util.test_queries import typical_test_sql_query_text, typical_test_query_r
     (dict(filter={'awow': {'$exists': 1}}), ["WHERE a.a || ! IS NOT NULL"]),
     (dict(filter={'awow': 'a!'}), ["WHERE a.a || ! = a!"]),
     # Filter a relationship
-    # (dict(filter={'related.a': True}), ["zzz"]),  # TODO: not yet implemented
+    (dict(filter={'related.a': 'a'}), ["WHERE EXISTS", "SELECT 1", "FROM r", "WHERE a.id = r.parent_id AND r.a = a"]),
+    (dict(filter={'related.parent.a': 'a'}), ["WHERE EXISTS", "SELECT 1", "FROM r", "WHERE a.id = r.parent_id AND (EXISTS", "SELECT 1", "FROM a", "WHERE a.id = r.parent_id AND a.a = a"]),
 ])
 def test_filter_sql(connection: sa.engine.Connection, query_object: QueryObjectDict, expected_query_lines: list[str]):
     """ Typical test: what SQL is generated """
