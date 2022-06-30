@@ -1,11 +1,66 @@
-""" JessiQL query object, input """
+""" JessiQL query object, input. Use this object to customize results: filter, sort, paginate.
+
+Readme: [JessiQL](https://github.com/kolypto/py-jessiql)
+"""
 input QueryObjectInput {
-    # select: gotten from the GraphQL tree itself
+    # `select`: we get it automatically from GraphQL selection tree
+
+    """ Filter: choose which results will be included.
+
+    This is how you filter:
+
+    ```javascript
+    {
+        type: "human", // only humans
+        age: { $gt: 18 }, // older than 18 y.o. "$gt" is an operator.
+    }
+    ```
+
+    In some limited number of cases, you can also refer to nested fields (i.e. JSON objects and relationships)
+    using dot-notation:
+
+    ```javascript
+    {
+        "books.tags": "sci-fi",  // people who have written Sci-Fi books
+    }
+    ```
+    """
     filter: Object
+
+    """ Sort: choose how results will be ordered.
+
+    Provide a list of field names, optionally followed by "+" for ascending sort (the default), "-" for descending sort.
+
+    In some limited number of cases, you can also refer to nested fields using dot-notation:
+
+    ```javascript
+    ["rating-", "author.country+"]
+    ```
+    """
     sort: [String!]
+
+    """ Simple pagination: how many rows to skip
+
+    Note: there is a better way: cursor-based pagination. See "before"/"after"
+    """
     skip: Int
+
+    """ Pagination: how many results to include per page.
+
+    Use together with "skip" to advance, or even better, together with "before"/"after" for cursor-based pagination.
+    """
     limit: Int
+
+    """ Smart pagination: cursor-based.
+
+    Give me a cursor value, and I'll nagivate you to the previous page.
+    """
     before: ID
+
+    """ Smart pagination: cursor-based.
+
+    Give me a cursor value, and I'll navigate you to the previous page.
+    """
     after: ID
 }
 
