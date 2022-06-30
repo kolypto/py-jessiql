@@ -24,11 +24,6 @@ class SelectOperation(Operation):
     When applied to a statement:
     * Adds SELECT column names that the user selected
     * Adds SELECT column names that are required for loading related objects
-
-    Supports:
-    * Columns
-    * @property
-    * @hybrid_property
     """
 
     def apply_to_statement(self, stmt: sa.sql.Select) -> sa.sql.Select:

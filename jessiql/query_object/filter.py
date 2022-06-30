@@ -23,8 +23,10 @@ class FilterQuery(OperationInputBase):
     """ Query Object operation: the "filter" operation
 
     Supports:
-    * Column names
+    * Columns
+    * @hybrid_property
     * JSON sub-objects (via dot-notation)
+    * Related column names!
     """
     # List of conditions: field conditions and/or boolean conditions
     conditions: list[FilterExpressionBase]

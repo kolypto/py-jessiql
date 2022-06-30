@@ -20,10 +20,6 @@ class FilterOperation(Operation):
     Handles: QueryObject.filter
     When applied to a statement:
     * Adds the WHERE clause
-
-    Supports:
-    * Column names
-    * JSON sub-objects (via dot-notation)
     """
 
     def apply_to_statement(self, stmt: sa.sql.Select) -> sa.sql.Select:

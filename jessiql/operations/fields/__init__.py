@@ -10,6 +10,7 @@ from .relation import RelationHandler
 
 
 # TODO: this is probably not the best place for this code, but anyway, here it is. For now.
+#   Move to QuerySettings and support custom fields?
 
 # If you implement a custom handler, just add it here. All JessiQL instances will pick it up.
 ALL_HANDLERS = (

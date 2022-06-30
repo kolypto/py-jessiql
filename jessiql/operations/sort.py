@@ -22,9 +22,6 @@ class SortOperation(Operation):
     When applied to a statement:
     * Adds ORDER BY with columns and sorting defined by the user
 
-    Supports:
-    * Column names
-    * JSON sub-objects (via dot-notation)
     """
 
     def apply_to_statement(self, stmt: sa.sql.Select) -> sa.sql.Select:

@@ -25,8 +25,10 @@ class SortQuery(OperationInputBase):
     """ Query Object operation: the "sort" operation
 
     Supports:
-    * Column names
+    * Columns
+    * @hybrid_property
     * JSON sub-objects (via dot-notation)
+    * Related column names!
     """
     # The list of fields and directions to sort with
     # Note that the list is an ordered collection: order matters here
