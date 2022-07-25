@@ -255,7 +255,7 @@ def test_query_object(query: str, variables: dict, expected_result_query: dict):
         }
     }
     ''',
-    query(select=['id', 'a', 'b', 'c', 'x', 'y', 'z', 'query']),
+    query(select=['id', 'a', 'b', 'c']),
     ),
     # Test: camelCase field conversion
     (
@@ -268,7 +268,7 @@ def test_query_object(query: str, variables: dict, expected_result_query: dict):
         }
     }
     ''',
-    query(select=['id', 'a', 'b', 'c', 'object_id', 'query']),
+    query(select=['id', 'a', 'b', 'c', 'object_id']),
     ),
     # Test: nested objects
     (
@@ -287,12 +287,12 @@ def test_query_object(query: str, variables: dict, expected_result_query: dict):
     }
     ''',
     query(
-        select=['a', 'z'],
+        select=['a'],
         join={
             'object': query(
-            select=['a', 'z'],
+            select=['a'],
                 join={
-                    'objects': query(select=['a', 'z'])
+                    'objects': query(select=['a'])
                 }
             ),
         }
@@ -317,23 +317,23 @@ def test_query_object_with_sa_model(query_str: str, expected_query_object: dict)
     qctx = prepare_graphql_query_for(schema_prepare(), query_str)
 
     # Prepare QuerySettings
-    def to_snake_case(name: str) -> str:
+    def to_camel_case(name: str) -> str:
         # We don't have ariadne here, so let's fake it
-        if name == 'objectId':
-            return 'object_id'
+        if name == 'object_id':
+            return 'objectId'
         else:
             return name
 
-    qsets = jessiql.QuerySettings(
-        rewriter=rewrite.RewriteSAModel(
-            rewrite.Transform(to_snake_case),
-            Model=Model,
-        )
-    )
+    model_rewriter = rewrite.Rewriter(
+        rewrite.map_sqlalchemy_model(Model, to_camel_case, skip=('x', 'y', 'z', 'query'))
+    ).set_relation_rewriters({
+        'object': lambda: model_rewriter,
+        'objects': lambda: model_rewriter,
+    })
 
     # Get the Query Object
     api_query_object = query_object_for(qctx.info, runtime_type='Model')
-    query_object = qsets.rewriter.query_object(api_query_object)
+    query_object = model_rewriter.rewrite_query_object(api_query_object)
     assert query_object.dict() == expected_query_object
 
 

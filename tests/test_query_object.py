@@ -1,19 +1,17 @@
-from re import A
-
 import pytest
-from jessiql import QuerySettings, QueryObject
+from jessiql import QueryObject
 from jessiql.query_object import rewrite
 
 
 def test_query_object_rewrite():
     """ Test Query Object rewriting """
 
-    # === Test: Rename
+    # === Test: map_dict()
     rewriter = rewrite.Rewriter(
-        rewrite.Rename({
-            'userName': 'user_name',
-            'userAge': 'user_age',
-        }),
+        rewrite.map_dict({
+            'user_name': 'userName',
+            'user_age': 'userAge',
+        })
     )
 
     api_query = QueryObject.from_query_object({
@@ -30,7 +28,7 @@ def test_query_object_rewrite():
             'userAge': {'$gt': 18},
         },
     })
-    query = rewriter.query_object(api_query)
+    query = rewriter.rewrite_query_object(api_query)
     assert query.dict() == query_object(
         select=['user_name', 'user_age'],
         sort=['user_name+', 'user_age-'],
@@ -43,67 +41,76 @@ def test_query_object_rewrite():
         }
     )
 
-
-    # === Test: Transform
-    to_lower = rewrite.Transform(
-        lambda name: name.lower(),
-        lambda name: name,
-    )
-
-    rewriter = rewrite.Rewriter(to_lower)
-    api_query = QueryObject.from_query_object({'select': ['userName', 'userAge']})
-    assert rewriter.query_object(api_query).dict() == query_object(select=['username', 'userage'])
-
-
-    # === Test: skip.Ignore
+    # === Test: map_api_fields_list()
     rewriter = rewrite.Rewriter(
-        rewrite.Rename({})
+        rewrite.map_api_fields_list(
+            ['userName', 'userAge'],
+            str.lower,
+            skip=['unknownField'],
+            fail=['badField'],
+        ),
     )
+    api_query = QueryObject.from_query_object({'select': ['userName', 'userAge']})
+    assert rewriter.rewrite_query_object(api_query).dict() == query_object(select=['username', 'userage'])
+
+
+    # === Test: skip, fail
     api_query = QueryObject.from_query_object({
         # This field will just be ignored
         'select': ['unknownField'],
     })
-    query = rewriter.query_object(api_query)
+    query = rewriter.rewrite_query_object(api_query)
     assert query.dict() == query_object()  # empty
 
-
-    # === Test: skip.Fail
-    rewriter = rewrite.Rewriter(
-        rewrite.Fail()
-    )
     api_query = QueryObject.from_query_object({
-        # This field will just be ignored
-        'select': ['unknownField'],
+        'select': ['badField'],
     })
     with pytest.raises(rewrite.UnknownFieldError):
-        rewriter.query_object(api_query)
+        rewriter.rewrite_query_object(api_query)
 
 
     # === Test: nesting
-    qsets = QuerySettings(
-        rewriter=rewrite.Rewriter(to_lower),
-        relations={
-            'articles': QuerySettings(
-                rewriter=rewrite.Rewriter(to_lower),
-            )
-        }
-    )
-    assert qsets.rewriter.settings is qsets  # Linked
+    user_rewriter = rewrite.Rewriter(lambda: rewrite.map_dict({
+        # Field names
+        'user_name': 'userName',
+        # Relation names. Also mentioned!
+        'articles': 'articles',
+    })).set_relation_rewriters({
+        'articles': lambda: article_rewriter,
+    })
+
+    article_rewriter = rewrite.Rewriter(lambda: rewrite.map_dict({
+        'article_id': 'articleId',
+        'author': 'author',
+    })).set_relation_rewriters({
+        'author': lambda: user_rewriter,
+    })
 
     api_query = QueryObject.from_query_object({
         'select': ['userName'],
         'join': {
             'articles': {
                 'select': ['articleId'],
+                'join': {
+                    'author': {
+                        'select': ['userName'],
+                    }
+                }
             }
         },
     })
-    query = qsets.rewriter.query_object(api_query)
+
+    query = user_rewriter.rewrite_query_object(api_query)
     assert query.dict() == query_object(
-        select=['username'],
+        select=['user_name'],
         join={
             'articles': query_object(
-                select=['articleid'],
+                select=['article_id'],
+                join={
+                    'author': query_object(
+                        select=['user_name'],
+                    )
+                }
             ),
         }
     )

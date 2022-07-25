@@ -8,7 +8,6 @@ from typing import Optional, Union, TYPE_CHECKING
 if TYPE_CHECKING:
     import sqlalchemy as sa
     from .query_executor import QueryExecutor, SARowDict
-    from jessiql.query_object.rewrite.rewrite import Rewriter
 
 
 @dataclasses.dataclass
@@ -24,24 +23,12 @@ class QuerySettings:
     # The max number of items you get, regardless of the limit
     max_limit: Optional[int] = None
 
-    # Field names rewriter
-    rewriter: Optional[Rewriter] = None
-
     # Settings for nested queries: i.e. relations
     # A mapping { relation name => Query Settings}, where the value can optionally be a lambda
     relations: Optional[dict[str, Union[QuerySettings, abc.Callable[[], QuerySettings]]]] = None
 
     # Getter function for relation settings
     relation_settings_getter: Optional[abc.Callable[[str], Optional[QuerySettings]]] = None
-
-    def __post_init__(self):
-        # Associate this rewriter with a QuerySettings
-        if self.rewriter:
-            # Make sure that it's 1-1 link. Why? Because every QuerySettings links to exactly one Rewriter, and they know one another.
-            assert self.rewriter.settings is None, 'Sorry, you cannot associate the same rewriter with multiple QuerySettings. Make a copy().'
-
-            # Ok? associate.
-            self.rewriter.settings = self
 
     # ### Callbacks for QueryExecutor
     # QueryExecutor and Operations will use these methods to apply the settings
@@ -78,15 +65,7 @@ class QuerySettings:
             # Give None, if nothing worked
             None
         )
-
-    def get_db_field_name(self, api_name: str) -> str:
-        """ Callback: convert API field name (e.g. camelCase) to DB field name (e.g. snake_case) """
-        return api_name
-
-    def get_api_field_name(self, db_name: str) -> str:
-        """ Callback: convert DB field name (e.g. snake_case) to API field name (e.g. camelCase) """
-        return db_name
-
+    
     # TODO: implement virtual fields
 
     def customize_statement(self, query: QueryExecutor, stmt: sa.sql.Select) -> sa.sql.Select:

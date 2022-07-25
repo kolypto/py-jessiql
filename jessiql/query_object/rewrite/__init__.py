@@ -1,15 +1,13 @@
-""" Tools for rewriting field names for the User
+""" A tool for rewriting Query Object field names between the API and the DB 
 
-For instance, your database may have a `user_id` field, but the API user would want to call it "userId".
-This module rewrites field names for the Query Object, and then rewrites field names in the result set.
+For instance, you may want to represent a database field "user_id" as "userId" in the API.
+This module provides a bi-directional mapping between DB names and API names.
 """
 
-from .base import RewriterBase, FieldContext, SkipField, UnknownFieldError
-from .rewrite import Rewriter
-from .rewrite_sa import RewriteSAModel
+from .rewriter import Rewriter
 
-# rules
-from .rename import Rename, KeepName
-from .transform import Transform
-from .skip import Skip, Ignore, Fail
-from .bool import Condition, ForFields
+from .fields_map import FieldsMap
+from .fields_map import map_dict, map_db_fields_list, map_api_fields_list
+from .fields_map import map_sqlalchemy_model, map_graphql_type
+
+from .base import FieldRenamer, FieldContext, UnknownFieldError
