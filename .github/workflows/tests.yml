@@ -35,7 +35,7 @@ jobs:
         restore-keys: |
           ${{ runner.os }}-nox-2-${{ matrix.python-version }}-
     - run: pip install nox poetry
-    - run: nox --report nox-report.json
+    - run: nox --no-error-on-missing-interpreters --report nox-report.json
 
     services:
       postgres:
