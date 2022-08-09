@@ -4,6 +4,7 @@
 
 # Hidden root files: tools, IDEs, etc
 /.*
+!/.github
 
 # ===[ PYTHON ]=== #
 __pycache__
