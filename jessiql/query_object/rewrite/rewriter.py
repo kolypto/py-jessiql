@@ -3,7 +3,7 @@ from __future__ import annotations
 from collections import abc
 from typing import TYPE_CHECKING, Union, Optional
 
-from .base import FieldRenamer, FieldContext, UnknownFieldError
+from .base import FieldRenamer, FieldContext
 
 
 if TYPE_CHECKING:
@@ -22,6 +22,7 @@ class Rewriter(FieldRenamer):
     relation_rewriters: dict[str, Union[Rewriter, abc.Callable[[], Rewriter]]]
     
     def __init__(self, field_renamer: Union[FieldsMap, abc.Callable[[], FieldRenamer]]):
+        # A "getter" function may be used to postpone the initialization (e.g. circular dependencies)
         if isinstance(field_renamer, abc.Callable):  # type: ignore[arg-type]
             self.field_renamer_getter = field_renamer  # type: ignore[assignment, misc]
             self.field_renamer = None
@@ -134,12 +135,13 @@ def _rename_select_relations(relations: abc.Iterable[SelectedRelation], rewriter
 
 def _rename_sort_fields(fields: abc.Iterable[SortingField], rewriter: Rewriter) -> abc.Iterator[SortingField]:
     for field in fields:
-        new_name = rewriter.api_to_db(field.name, FieldContext.SORT)
+        new_name, new_sub_path = _rewrite_field_name_with_sub_path(rewriter, FieldContext.SORT, field.name, field.sub_path)
+        
         if new_name is not None:
             yield SortingField(  # type: ignore[call-arg]
                 name=new_name,
                 direction=field.direction,
-                sub_path=field.sub_path,  # TODO: sub-path renames
+                sub_path=tuple(new_sub_path) if new_sub_path is not None else None,
                 handler=None,  # type: ignore[arg-type]
             )
 
@@ -151,16 +153,31 @@ def _rename_filter_conditions(conditions: abc.Iterable[FilterExpressionBase], re
                 clauses=list(_rename_filter_conditions(condition.clauses, rewriter)),
             )
         elif isinstance(condition, FieldFilterExpression):
-            new_name = rewriter.api_to_db(condition.field, FieldContext.FILTER)
+            new_name, new_sub_path = _rewrite_field_name_with_sub_path(rewriter, FieldContext.FILTER, condition.field, condition.sub_path)
+            
             if new_name is not None:
                 yield FieldFilterExpression(  # type: ignore[call-arg]
                     field=new_name,
                     operator=condition.operator,
                     value=condition.value,
-                    sub_path=condition.sub_path,  # TODO: sub-path renames
+                    sub_path=tuple(new_sub_path) if new_sub_path is not None else None,
                     handler=None,  # type: ignore[arg-type]
                 )
         else:
             raise NotImplementedError
+
+def _rewrite_field_name_with_sub_path(rewriter: Rewriter, field_context: FieldContext, field_name: str, sub_path: Optional[tuple[str, ...]]) -> tuple[Optional[str], Optional[tuple[str, ...]]]:
+    if sub_path is None:
+        new_name = rewriter.api_to_db(field_name, field_context)
+        return new_name, None
+    else:
+        dotted_name = '.'.join((field_name, *sub_path))
+        translated = rewriter.api_to_db(dotted_name, FieldContext.FILTER)
+
+        if translated is None:
+            return None, None
+        else:
+            new_name, *new_sub_path = translated.split('.')
+            return new_name, new_sub_path
 
 # endregion

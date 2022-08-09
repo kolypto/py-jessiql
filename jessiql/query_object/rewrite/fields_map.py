@@ -10,6 +10,7 @@ from jessiql import sainfo
 
 from .base import FieldRenamer, FieldContext, UnknownFieldError
 
+
 @dataclasses.dataclass
 class FieldsMap(FieldRenamer):
     """ Fields mapped between DB names <-> API names """
@@ -51,9 +52,19 @@ class FieldsMap(FieldRenamer):
 
 def map_dict(db_to_api_map: dict[str, str], *, skip: abc.Iterable[str] = (), fail: abc.Iterable[str] = ()) -> FieldsMap:
     """ Initialize a FieldMap from a dictionary, bi-directional 
+
+    Example:
+        
+        rewrite.map_dict({
+          'user_id': 'userId',
+        })
+
+    By default, unknown fields raise a KeyError. Every field that you use must be explicitly mentioned.
     
     Args:
         db_to_api_map: The mapping of { db names => api names }
+        skip: Fields to skip. That is, they are completely removed.
+        fail: Fields to fail upon. When such a field is encountered, the `UnknownFieldError` is raised.
     """
     return FieldsMap(
         map_db_to_api=db_to_api_map.copy(),
@@ -64,7 +75,14 @@ def map_dict(db_to_api_map: dict[str, str], *, skip: abc.Iterable[str] = (), fai
 
 
 def map_db_fields_list(field_names: abc.Iterable[str], db_to_api: abc.Callable[[str], str], *, skip: abc.Iterable[str] = (), fail: abc.Iterable[str] = ()) -> FieldsMap:
-    """ Given a list of DB field names, and a function, map them into API field names """
+    """ Given a list of DB field names, and a function, map them into API field names 
+    
+    Example:
+        rewrite.map_db_fields_list(
+            ['id', 'user_name'],
+            to_camel_case,
+        )
+    """
     db_to_api_map = {
         db_name: db_to_api(db_name)
         for db_name in field_names
@@ -73,7 +91,14 @@ def map_db_fields_list(field_names: abc.Iterable[str], db_to_api: abc.Callable[[
 
 
 def map_api_fields_list(field_names: abc.Iterable[str], api_to_db: abc.Callable[[str], str], *, skip: abc.Iterable[str] = (), fail: abc.Iterable[str] = ()) -> FieldsMap:
-    """ Given a list of API field names, and a function, map them into DB field names """
+    """ Given a list of API field names, and a function, map them into DB field names 
+    
+    Example:
+        rewrite.map_db_fields_list(
+            ['id', 'userName'],
+            to_snake_case,
+        )
+    """
     db_to_api_map = {
         api_to_db(api_name): api_name
         for api_name in field_names
@@ -82,7 +107,13 @@ def map_api_fields_list(field_names: abc.Iterable[str], api_to_db: abc.Callable[
 
 
 def map_sqlalchemy_model(Model: type, db_to_api: abc.Callable[[str], str], *, skip: abc.Iterable[str] = (), fail: abc.Iterable[str] = ()) -> FieldsMap:
-    """ Rename map from a SqlAlchemy model and a function """
+    """ Rename map from a SqlAlchemy model and a function 
+    
+        Example:
+            rewrite.map_sqlalchemy_model(Model, to_camel_case).update(rewrite.map_dict({
+                'address_1': 'address1',
+            }))
+    """
     mapper = sa.orm.class_mapper(Model)
     field_names = {
         *mapper.all_orm_descriptors.keys(),

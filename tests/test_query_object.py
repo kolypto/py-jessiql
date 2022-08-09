@@ -55,6 +55,8 @@ def test_query_object_rewrite():
 
 
     # === Test: skip, fail
+    rewriter = rewriter  # use the same one
+
     api_query = QueryObject.from_query_object({
         # This field will just be ignored
         'select': ['unknownField'],
@@ -117,7 +119,38 @@ def test_query_object_rewrite():
 
 
     # === Test: RewriteSAModel
-    # this test is implemented in: test_integration_graphql.py
+    # this test is implemented in: test_integration_graphql.py::test_query_object_with_sa_model
+    pass
+
+
+    # === Test: sub-fields (dot-notation)
+    rewriter = rewrite.Rewriter(
+        rewrite.map_dict({
+            'meta_data': 'metaData',
+            'meta_data.eye_color': 'metaData.eyeColor',
+            'meta_data.favorite_drink': 'metaData.favoriteDrink',
+        })
+    )
+    api_query = QueryObject.from_query_object({
+        'select': ['metaData'],
+        'filter': {
+            'metaData.eyeColor': 'blue',
+            'metaData.favoriteDrink': 'tea',
+        },
+        'sort': ['metaData.eyeColor+']
+    })
+    query = rewriter.rewrite_query_object(api_query)
+    assert query.dict() == query_object(
+        select=['meta_data'],
+        filter={
+            # Renamed because present in the mapping
+            'meta_data.eye_color': {'$eq': 'blue'},
+            # Not renamed because not present in the mapping
+            'meta_data.favorite_drink': {'$eq': 'tea'},
+        },
+        sort=['meta_data.eye_color+'],
+    )
+
 
 
 def query_object(select=[], sort=[], filter={}, join={}, skip=None, limit=None, before=None, after=None) -> dict:
