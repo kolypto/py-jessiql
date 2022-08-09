@@ -66,3 +66,22 @@ def test_query_customize_statements(connection: sa.engine.Connection, query_obje
 
     # SQL
     assert_query_statements_lines(q, *expected_columns)
+
+
+def test_query_filter(connection: sa.engine.Connection):
+    """ Test Query.filter() """
+    def main():
+        query_object = dict()
+        q = Query(query_object, User)
+        q.filter(User.id == 1)
+
+        assert_query_statements_lines(q, 'WHERE u.id = 1')
+
+    # Models
+    Base = sacompat.declarative_base()
+
+    class User(IdManyFieldsMixin, Base):
+        __tablename__ = 'u'
+    
+    # Go
+    main()

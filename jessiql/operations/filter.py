@@ -7,12 +7,10 @@ import sqlalchemy.sql.functions
 
 import sqlalchemy.dialects.postgresql as pg  # TODO: FIXME: hardcoded dependency on Postgres!
 
-from .base import Operation
-
 from jessiql import exc
+from jessiql.util.sacompat import stmt_filter  
 from jessiql.query_object.filter import FilterExpressionBase, FieldFilterExpression, BooleanFilterExpression
-from jessiql.sainfo.version import SA_13
-
+from .base import Operation
 
 class FilterOperation(Operation):
     """ Filter: applies a filter condition
@@ -31,10 +29,7 @@ class FilterOperation(Operation):
         )
 
         # Add the WHERE clause
-        if SA_13:
-            stmt = stmt.where(sa.and_(*conditions))
-        else:
-            stmt = stmt.filter(*conditions)
+        stmt = stmt_filter(stmt, *conditions)
 
         # Done
         return stmt

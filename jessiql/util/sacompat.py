@@ -45,6 +45,16 @@ def add_columns(stmt: sa.sql.Select, columns: abc.Iterable[Union[sa.Column, sa.s
     return stmt
 
 
+def stmt_filter(stmt: sa.sql.Select, *conditions: sa.sql.ClauseElement) -> sa.sql.Select:
+    """ Filter an SqlAlchemy statement """
+    if SA_13:
+        stmt = stmt.where(sa.and_(*conditions))
+    else:
+        stmt = stmt.filter(*conditions)
+
+    return stmt
+
+
 try:
     # SA 1.4
     from sqlalchemy.engine import Row as SARow

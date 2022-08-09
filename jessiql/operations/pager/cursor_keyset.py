@@ -9,13 +9,13 @@ import sqlalchemy as sa
 
 from jessiql import exc
 from jessiql.query_object.sort import SortingField
-from jessiql.sainfo.version import SA_14
 from jessiql.typing import SARowDict, SAModelOrAlias
 from jessiql.query_object import QueryObject, SortingDirection
 from jessiql.sainfo.columns import (
     is_column_property_nullable,
     is_column_property_unique, resolve_column_by_name,
 )
+from jessiql.util.sacompat import stmt_filter
 
 from .page_links import PageLinks
 from .util import encode_opaque_cursor, decode_opaque_cursor
@@ -157,10 +157,7 @@ class KeysetCursor(CursorImplementation):
 
         # Paginate
         # We will always load one more row to check if there's a next page
-        if SA_14:
-            return stmt.filter(filter_expression).limit(limit + 1)
-        else:
-            return stmt.where(filter_expression).limit(limit + 1)
+        return stmt_filter(stmt, filter_expression).limit(limit + 1)
 
     def inspect_data_rows(self, query_executor: QueryExecutor, rows: list[SARowDict]):
         limit = self.cursor_value.limit if self.cursor_value else self.limit

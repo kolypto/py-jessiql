@@ -9,7 +9,7 @@ import sqlalchemy.orm.strategies
 
 from jessiql.sautil.adapt import SimpleColumnsAdapter
 from jessiql.typing import SAModelOrAlias, SARowDict
-from jessiql.util.sacompat import add_columns, SARow
+from jessiql.util.sacompat import add_columns, SARow, stmt_filter
 from jessiql.sainfo.version import SA_13, SA_14
 
 
@@ -218,16 +218,15 @@ class JSelectInLoader:
                 q = q.select_from(
                     sa.orm.join(parent_alias, self.target_model, onclause=getattr(parent_alias, self.key).of_type(self.target_model))
                 )
-            else:
+            elif SA_14:
                 q = q.select_from(parent_alias).join(
                     getattr(parent_alias, self.key).of_type(self.target_model)
                 )
+            else:
+                raise NotImplementedError
 
         # [o] q = q.filter(in_expr.in_(sql.bindparam("primary_keys")))
-        if SA_13:
-            q = q.where(in_expr.in_(sa.sql.bindparam("primary_keys", expanding=True)))
-        else:
-            q = q.filter(in_expr.in_(sa.sql.bindparam("primary_keys")))
+        q = stmt_filter(q, in_expr.in_(sa.sql.bindparam("primary_keys", expanding=True)))
 
         return q
 

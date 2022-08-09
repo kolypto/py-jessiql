@@ -5,8 +5,13 @@ from __future__ import annotations
 from functools import partial
 from typing import Optional, Union, TYPE_CHECKING
 
+import sqlalchemy as sa
+
 from jessiql.query_object import QueryObject, QueryObjectDict
+from jessiql.typing import SAModelOrAlias
+from jessiql.util.sacompat import stmt_filter
 from .query_executor import QueryExecutor, QuerySettings
+from .query_executor import CustomizeStatementCallable
 
 
 if TYPE_CHECKING:
@@ -22,7 +27,7 @@ class Query(QueryExecutor):
         query_object = {'select': ['login']}
         q = Query(query_object, models.User)
     """
-    def __init__(self, query: Union[QueryObject, QueryObjectDict], Model: type, settings: QuerySettings = None):
+    def __init__(self, query: Union[QueryObject, QueryObjectDict], Model: SAModelOrAlias, settings: QuerySettings = None):
         """ Prepare to make a query with this Query Object against target Model
 
         Args:
@@ -80,3 +85,17 @@ class Query(QueryExecutor):
         These values are opaque cursors that you can feed to "before" or "after" to get to the corresponding page
         """
         return self.pager_op.get_page_links()
+
+    def filter(self, *conditions: sa.sql.ClauseElement):
+        """ Apply filtering to this Query. 
+        
+        Note that this function will filter top-level query only! it will not filter any related objects.
+        """
+        @self.customize_statements.append
+        def filter_func(query: QueryExecutor, stmt: sa.sql.Select) -> sa.sql.Select:
+            if query.load_path == (self.Model,):
+                stmt = stmt_filter(stmt, *conditions)
+            
+            return stmt
+
+        return self

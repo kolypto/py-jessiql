@@ -33,8 +33,11 @@ class QueryExecutor:
     # The Query Object to execute.
     query: QueryObject
 
-    # The target model to execute the Query against
-    Model: SAModelOrAlias
+    # The target model. Always unaliased.
+    Model: type
+
+    # The model to use for building queries. Can be an aliased class.
+    model_or_alias: SAModelOrAlias
 
     # The Query settings
     settings: QuerySettings
@@ -95,12 +98,13 @@ class QueryExecutor:
 
         Args:
             query: The Query Object to execute
-            Model: The SqlAlchemy Model class to execute the query against
+            Model: The SqlAlchemy Model class to execute the query against, or alias
         """
         # The query and the model to query against
         assert isinstance(query, QueryObject)
         self.query = query
-        self.Model = Model
+        self.Model = unaliased_class(Model)
+        self.model_or_alias = Model
         self.settings = settings or self.DEFAULT_SETTINGS
 
         # Customization handlers
@@ -110,18 +114,18 @@ class QueryExecutor:
 
         # Load path
         # May be modified by for_relation()
-        self.load_path = (unaliased_class(Model),)
+        self.load_path = (self.Model,)
 
         # Init loader
         # May be replaced by for_relation()
         self.loader = self.PrimaryQueryLoader()
 
         # Init operations
-        self.select_op = self.SelectOperation(query, Model, self.settings)
-        self.filter_op = self.FilterOperation(query, Model, self.settings)
-        self.sort_op = self.SortOperation(query, Model, self.settings)
-        self.skiplimit_op = self.SkipLimitOperation(query, Model, self.settings)
-        self.beforeafter_op = self.BeforeAfterOperation(query, Model, self.settings, self.skiplimit_op)
+        self.select_op = self.SelectOperation(query, self.model_or_alias, self.settings)
+        self.filter_op = self.FilterOperation(query, self.model_or_alias, self.settings)
+        self.sort_op = self.SortOperation(query, self.model_or_alias, self.settings)
+        self.skiplimit_op = self.SkipLimitOperation(query, self.model_or_alias, self.settings)
+        self.beforeafter_op = self.BeforeAfterOperation(query, self.model_or_alias, self.settings, self.skiplimit_op)
 
         # Which operation to use as the paginator?
         # Is it important to have only one pager operation because they are in conflict.
@@ -129,7 +133,7 @@ class QueryExecutor:
         self.pager_op: Union[operations.SkipLimitOperation, operations.BeforeAfterOperation] = self.beforeafter_op
 
         # Resolve every input
-        resolve_query_object(self.query, self.Model)
+        resolve_query_object(self.query, self.model_or_alias)
 
         # Run for_query() on every operation
         # It is important that this is done after `self.query` is resolved!
@@ -155,7 +159,7 @@ class QueryExecutor:
         }
 
     __slots__ = (
-        'query', 'Model', 'settings', 'load_path',
+        'query', 'Model', 'model_or_alias', 'settings', 'load_path',
         'customize_statements', 'customize_results',
         'select_op', 'filter_op', 'sort_op', 'skiplimit_op', 'beforeafter_op', 'pager_op',
         'loader', 'related_executors',
@@ -174,10 +178,10 @@ class QueryExecutor:
             relation: The relation we're loading
         """
         # Load path: parent + (relation, Model)
-        self.load_path = source_executor.load_path + (relation.name, unaliased_class(self.Model))
+        self.load_path = source_executor.load_path + (relation.name, self.Model)
 
         # Replace the loader: use a Related Loader that can populate objects with related fields
-        self.loader = self.RelatedQueryLoader(relation, source_executor.Model, self.Model)
+        self.loader = self.RelatedQueryLoader(relation, source_executor.model_or_alias, self.model_or_alias)
 
         # SkipLimit needs to enter a special pagination mode: window function pagination mode.
         # If it used SKIP/LIMIT, it would ruin result sets because "LIMIT 50" applies to the whole result set!
@@ -235,7 +239,7 @@ class QueryExecutor:
     def count(self, connection: sa.engine.Connection) -> int:
         """ Execute the query and return the number of result rows only """
         # Prepare the statement
-        stmt = sa.select([sa.func.count()]).select_from(self.Model)
+        stmt = sa.select([sa.func.count()]).select_from(self.model_or_alias)
 
         # Apply everything that may change the number of matching rows
         stmt = self.filter_op.apply_to_statement(stmt)
@@ -302,7 +306,7 @@ class QueryExecutor:
         """
         # Prepare a boilerplate statement for the current model
         # It has no selected fields yet.
-        stmt = sa.select([]).select_from(self.Model)
+        stmt = sa.select([]).select_from(self.model_or_alias)
 
         # Apply operations to this statement: select, filter, sort, skiplimit, etc, and customization too.
         # This is where more clauses are applied.

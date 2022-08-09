@@ -7,11 +7,10 @@ import sqlalchemy as sa
 from jessiql.typing import SAAttribute, SAModelOrAlias
 from jessiql.query_object import QueryObject
 from jessiql.sautil.adapt import SimpleColumnsAdapter
-from jessiql.sainfo.version import SA_14
 
 from jessiql.operations.base import Operation
 from jessiql.operations.sort import get_sort_fields_with_direction
-from jessiql.util.sacompat import add_columns
+from jessiql.util.sacompat import SA_14, add_columns, stmt_filter
 
 
 if TYPE_CHECKING:
@@ -155,15 +154,9 @@ class SkipLimitOperation(Operation):
         # Apply the LIMIT condition using row numbers
         # These two statements simulate skip/limit using window functions
         if skip:
-            if SA_14:
-                stmt = stmt.filter(sa.sql.literal_column('__group_row_n') > skip)
-            else:
-                stmt = stmt.where(sa.sql.literal_column('__group_row_n') > skip)
+            stmt = stmt_filter(stmt, sa.sql.literal_column('__group_row_n') > skip)
         if limit:
-            if SA_14:
-                stmt = stmt.filter(sa.sql.literal_column('__group_row_n') <= ((skip or 0) + limit))
-            else:
-                stmt = stmt.where(sa.sql.literal_column('__group_row_n') <= ((skip or 0) + limit))
+            stmt = stmt_filter(stmt, sa.sql.literal_column('__group_row_n') <= ((skip or 0) + limit))
 
         # Done
         return stmt
