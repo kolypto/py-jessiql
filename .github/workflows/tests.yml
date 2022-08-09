@@ -20,15 +20,15 @@ jobs:
 
     strategy:
       matrix:
-        python-version: ['3.x']
+        python-version: ['3.9', '3.10']
 
     name: ${{ github.ref }}, Python ${{ matrix.python-version }}
     steps:
-    - uses: actions/setup-python@v2
+    - uses: actions/setup-python@v4
       with:
         python-version: ${{ matrix.python-version }}
-    - uses: actions/checkout@v2
-    - uses: actions/cache@v2
+    - uses: actions/checkout@v3
+    - uses: actions/cache@v3
       with:
         path: ./.nox/  # what we cache: nox virtualenv (they're expensive)
         key: ${{ runner.os }}-nox-2-${{ matrix.python-version }}-${{ hashFiles('**/pyproject.toml', '**/noxfile.py') }}  # cache key
