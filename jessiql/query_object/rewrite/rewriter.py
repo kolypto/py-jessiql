@@ -141,7 +141,7 @@ def _rename_sort_fields(fields: abc.Iterable[SortingField], rewriter: Rewriter) 
             yield SortingField(  # type: ignore[call-arg]
                 name=new_name,
                 direction=field.direction,
-                sub_path=tuple(new_sub_path) if new_sub_path is not None else None,
+                sub_path=new_sub_path,
                 handler=None,  # type: ignore[arg-type]
             )
 
@@ -160,7 +160,7 @@ def _rename_filter_conditions(conditions: abc.Iterable[FilterExpressionBase], re
                     field=new_name,
                     operator=condition.operator,
                     value=condition.value,
-                    sub_path=tuple(new_sub_path) if new_sub_path is not None else None,
+                    sub_path=new_sub_path,
                     handler=None,  # type: ignore[arg-type]
                 )
         else:
@@ -178,6 +178,6 @@ def _rewrite_field_name_with_sub_path(rewriter: Rewriter, field_context: FieldCo
             return None, None
         else:
             new_name, *new_sub_path = translated.split('.')
-            return new_name, new_sub_path
+            return new_name, tuple(new_sub_path)
 
 # endregion
