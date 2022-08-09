@@ -49,7 +49,7 @@ class FieldsMap(FieldRenamer):
         return self
 
 
-def map_dict(db_to_api_map: dict[str, str], *, skip: abc.Iterable[str] = (), fail: abc.ITerable[str] = ()) -> FieldsMap:
+def map_dict(db_to_api_map: dict[str, str], *, skip: abc.Iterable[str] = (), fail: abc.Iterable[str] = ()) -> FieldsMap:
     """ Initialize a FieldMap from a dictionary, bi-directional 
     
     Args:

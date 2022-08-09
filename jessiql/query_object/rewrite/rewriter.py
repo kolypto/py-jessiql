@@ -1,9 +1,13 @@
 from __future__ import annotations
 
 from collections import abc
-from typing import Union, Optional
+from typing import TYPE_CHECKING, Union, Optional
 
 from .base import FieldRenamer, FieldContext, UnknownFieldError
+
+
+if TYPE_CHECKING:
+    from .fields_map import FieldsMap
 
 
 class Rewriter(FieldRenamer):
@@ -18,12 +22,12 @@ class Rewriter(FieldRenamer):
     relation_rewriters: dict[str, Union[Rewriter, abc.Callable[[], Rewriter]]]
     
     def __init__(self, field_renamer: Union[FieldsMap, abc.Callable[[], FieldRenamer]]):
-        if isinstance(field_renamer, abc.Callable):
-            self.field_renamer_getter = field_renamer
+        if isinstance(field_renamer, abc.Callable):  # type: ignore[arg-type]
+            self.field_renamer_getter = field_renamer  # type: ignore[assignment, misc]
             self.field_renamer = None
         else:
-            self.field_renamer = field_renamer
-            self.field_renamer_getter = lambda: field_renamer
+            self.field_renamer = field_renamer  # type: ignore[assignment]
+            self.field_renamer_getter = lambda: field_renamer  # type: ignore[assignment, misc, return-value]
         
         self.relation_rewriters = {}
 
@@ -50,13 +54,13 @@ class Rewriter(FieldRenamer):
 
     def api_to_db(self, name: str, context: FieldContext) -> Optional[str]:
         if self.field_renamer is None:
-            self.field_renamer = self.field_renamer_getter()
+            self.field_renamer = self.field_renamer_getter()  # type: ignore[misc]
         
         return self.field_renamer.api_to_db(name, context)
 
     def db_to_api(self, name: str) -> Optional[str]:
         if self.field_renamer is None:
-            self.field_renamer = self.field_renamer_getter()
+            self.field_renamer = self.field_renamer_getter()  # type: ignore[misc]
         
         return self.field_renamer.db_to_api(name)
         

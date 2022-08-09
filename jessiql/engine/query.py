@@ -11,7 +11,6 @@ from jessiql.query_object import QueryObject, QueryObjectDict
 from jessiql.typing import SAModelOrAlias
 from jessiql.util.sacompat import stmt_filter
 from .query_executor import QueryExecutor, QuerySettings
-from .query_executor import CustomizeStatementCallable
 
 
 if TYPE_CHECKING:
