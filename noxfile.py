@@ -15,7 +15,7 @@ SQLALCHEMY_VERSIONS = [
     # Selective: major releases
     # NOTE: keep major versions with breaking changes. Skip versions with minor bugfix changes.
     *(f'1.3.{x}' for x in (8, 11, 16, 24)),
-    *(f'1.4.{x}' for x in (24, 26, 27, 28, 27, 29, 31, 32, 37, 39)),
+    *(f'1.4.{x}' for x in (24, 26, 27, 28, 27, 29, 31, 32, 37, 40)),
 ]
 GRAPHQL_CORE_VERSIONS = [
     '3.1.0', '3.1.1', '3.1.2', '3.1.3', '3.1.4', '3.1.5', '3.1.6', '3.1.7',
