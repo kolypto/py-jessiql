@@ -12,7 +12,7 @@ from .base import FieldRenamer, FieldContext, UnknownFieldError
 
 
 @dataclasses.dataclass
-class FieldsMap(FieldRenamer):
+class FieldsMap:
     """ Fields mapped between DB names <-> API names """
     # Reverse map: DB names => API names
     map_db_to_api: dict[str, str]
